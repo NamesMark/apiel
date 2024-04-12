@@ -1,0 +1,20 @@
+[package]
+name = "apiel-mvp"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+doc = false
+name = "apiel-mvp"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[build-dependencies]
+cfgrammar = "0.13.4"
+lrlex = "0.13.4"
+lrpar = "0.13.4"
+
+[dependencies]
+cfgrammar = "0.13.4"
+lrlex = "0.13.4"
+lrpar = "0.13.4"
