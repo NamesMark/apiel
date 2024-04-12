@@ -25,7 +25,32 @@ Term -> Result<Expr, ()>:
 
 Factor -> Result<Expr, ()>:
       '(' Expr ')' { $2 }
-    | 'INT' { Ok(Expr::Number{ span: $span }) }
+| 'VEC' {
+    let elements = match $1 {
+        Ok(lexeme) => {
+            let full_span = lexeme.span();
+            let full_str = $lexer.span_str(full_span);
+            let mut current_pos = full_span.start();
+            println!("Trying to parse vec: {}", full_str);
+            full_str.split_whitespace().map(|value| {
+                let start = full_str[current_pos..].find(value).unwrap() + current_pos;
+                let end = start + value.len();
+                current_pos = end;
+                Expr::Scalar { span: Span::new(start, end) }
+            }).collect::<Vec<_>>()
+        },
+        Err(_) => {
+            vec![]
+        }
+    };
+    Ok(Expr::Vector { span: $span, elements })
+}
+    | 'INT' {
+        match $1 {
+            Ok(lexeme) => Ok(Expr::Scalar { span: $span }),
+            Err(_) => Err(())
+        }
+    }
     ;
 
 Unmatched -> ():
@@ -57,7 +82,11 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
-    Number {
-        span: Span
-    }
+    Scalar {
+        span: Span,
+    },
+    Vector {
+        span: Span,
+        elements: Vec<Expr>,
+    },
 }

@@ -34,7 +34,7 @@ fn main() {
                     continue;
                 }
                 match parse::parse_and_evaluate(&line) {
-                    Ok(result) => println!("Result: {}", result),
+                    Ok(result) => println!("Result: {:?}", result),
                     Err(err) => eprintln!("{}", err),
                 }
             }

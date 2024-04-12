@@ -14,7 +14,7 @@ use lrlex::DefaultLexeme;
 #[cfg(feature = "debug")]
 use lrpar::{Lexer, Lexeme};
 
-pub fn parse_and_evaluate(line: &str) -> Result<i64, String> {
+pub fn parse_and_evaluate(line: &str) -> Result<Vec<i64>, String> {
     let lexerdef = apiel_l::lexerdef();
     let lexer = lexerdef.lexer(line);
 
