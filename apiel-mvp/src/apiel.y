@@ -3,21 +3,21 @@
 %expect-unused Unmatched "UNMATCHED"
 %%
 Expr -> Result<Expr, ()>:
-      Expr '+' Term {
+      Term '+' Expr  {
         Ok(Expr::Add{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
     | 
-      Expr '-' Term {
+      Term '-' Expr {
         Ok(Expr::Sub{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
     | Term { $1 }
     ;
 
 Term -> Result<Expr, ()>:
-      Term '*' Factor {
+      Factor '×' Term {
         Ok(Expr::Mul{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
-    | Term '/' Factor {
+    | Factor '÷' Term {
         Ok(Expr::Div{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
     | Factor { $1 }

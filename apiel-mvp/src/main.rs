@@ -6,11 +6,7 @@ use cfgrammar::Span;
 use lrlex::{lrlex_mod, DefaultLexerTypes};
 use lrpar::{lrpar_mod, NonStreamingLexer};
 
-// Using `lrlex_mod!` brings the lexer for `apiel.l` into scope. By default the module name will be
-// `apiel_l` (i.e. the file name, minus any extensions, with a suffix of `_l`).
 lrlex_mod!("apiel.l");
-// Using `lrpar_mod!` brings the parser for `apiel.y` into scope. By default the module name will be
-// `apiel_y` (i.e. the file name, minus any extensions, with a suffix of `_y`).
 lrpar_mod!("apiel.y");
 
 use apiel_y::Expr;
@@ -35,7 +31,7 @@ fn main() {
                     println!("{}", e.pp(&lexer, &apiel_y::token_epp));
                 }
                 if let Some(Ok(r)) = res {
-                    match eval(&lexer, r) {
+                    match eval::eval::<i64>(&lexer, r) {
                         Ok(i) => println!("Result: {}", i),
                         Err((span, msg)) => {
                             let ((line, col), _) = lexer.line_col(span);
@@ -55,26 +51,34 @@ fn main() {
     }
 }
 
-fn eval(
-    lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
-    e: Expr,
-) -> Result<u64, (Span, &'static str)> {
-    match e {
-        Expr::Add { span, lhs, rhs } => eval(lexer, *lhs)?
-            .checked_add(eval(lexer, *rhs)?)
-            .ok_or((span, "overflowed")),
-        Expr::Sub { span, lhs, rhs } => eval(lexer, *lhs)?
-            .checked_sub(eval(lexer, *rhs)?)
-            .ok_or((span, "overflowed")),
-        Expr::Mul { span, lhs, rhs } => eval(lexer, *lhs)?
-            .checked_mul(eval(lexer, *rhs)?)
-            .ok_or((span, "overflowed")),
-        Expr::Div { span, lhs, rhs } => eval(lexer, *lhs)?
-            .checked_sub(eval(lexer, *rhs)?)
-            .ok_or((span, "overflowed")),
-        Expr::Number { span } => lexer
-            .span_str(span)
-            .parse::<u64>()
-            .map_err(|_| (span, "cannot be represented as a u64")),
+// MARK: eval
+
+mod eval {
+    use super::*;
+    use num_traits::{CheckedAdd, CheckedSub, CheckedDiv, CheckedMul};
+
+    pub fn eval<N: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + std::str::FromStr + std::fmt::Debug + Copy>(
+        lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
+        e: Expr,
+    ) -> Result<N, (Span, &'static str)> {
+        match e {
+            Expr::Add { span, lhs, rhs } => eval::<N>(lexer, *lhs)?
+                .checked_add(&eval::<N>(lexer, *rhs)?)
+                .ok_or((span, "addition overflowed")),
+            Expr::Sub { span, lhs, rhs } => eval::<N>(lexer, *lhs)?
+                .checked_sub(&eval::<N>(lexer, *rhs)?)
+                .ok_or((span, "subtraction overflowed")),
+            Expr::Mul { span, lhs, rhs } => eval::<N>(lexer, *lhs)?
+                .checked_mul(&eval::<N>(lexer, *rhs)?)
+                .ok_or((span, "multiplication overflowed")),
+            Expr::Div { span, lhs, rhs } => eval::<N>(lexer, *lhs)?
+                .checked_div(&eval::<N>(lexer, *rhs)?)
+                .ok_or((span, "division overflowed")),
+            Expr::Number { span } => lexer
+                .span_str(span)
+                .parse::<N>()
+                .map_err(|_| (span, "cannot be represented as a valid number")),
+        }
     }
 }
+
