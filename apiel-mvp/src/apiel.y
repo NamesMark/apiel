@@ -20,6 +20,9 @@ Term -> Result<Expr, ()>:
     | Factor '÷' Term {
         Ok(Expr::Div{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'EXP' Term {
+        Ok(Expr::Exp{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor { $1 }
     ;
 
@@ -78,6 +81,11 @@ pub enum Expr {
         rhs: Box<Expr>,
     },
     Div {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Exp {
         span: Span,
         lhs: Box<Expr>,
         rhs: Box<Expr>,

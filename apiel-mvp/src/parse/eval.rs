@@ -1,9 +1,10 @@
 // MARK: eval
 use super::*;
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
+use num::checked_pow;
 
 pub fn eval<
-    N: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + std::str::FromStr + std::fmt::Debug + Copy,
+    N: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + std::str::FromStr + std::fmt::Debug + Copy + num::One + TryInto<usize>,
 >(
     lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
     e: Expr,
@@ -146,6 +147,50 @@ pub fn eval<
                     .iter()
                     .zip(rhs_eval.iter())
                     .map(|(l, r)| l.checked_div(r).ok_or((span, "division overflowed")))
+                    .collect()
+            }
+        }
+        Expr::Exp { span, lhs, rhs } => {
+            let lhs_eval = eval::<N>(lexer, *lhs)?;
+            let rhs_eval = eval::<N>(lexer, *rhs)?;
+        
+            if !check_lengths(&lhs_eval, &rhs_eval) {
+                return Err((
+                    span,
+                    "Can only raise to the power of same-sized vectors, scalars, or vector by scalar",
+                ));
+            }
+        
+            if lhs_eval.len() == 1 {
+                rhs_eval
+                    .iter()
+                    .map(|num| {
+                        let exponent = TryInto::<usize>::try_into(lhs_eval[0])
+                            .map_err(|_| (span, "cannot be represented as a valid number"))?;
+                        checked_pow(*num, exponent)
+                            .ok_or((span, "exponentiation overflowed"))
+                    })
+                    .collect()
+            } else if rhs_eval.len() == 1 {
+                lhs_eval
+                    .iter()
+                    .map(|num| {
+                        let exponent = TryInto::<usize>::try_into(rhs_eval[0])
+                            .map_err(|_| (span, "cannot be represented as a valid number"))?;
+                        checked_pow(*num, exponent)
+                            .ok_or((span, "exponentiation overflowed"))
+                    })
+                    .collect()
+            } else {
+                lhs_eval
+                    .iter()
+                    .zip(rhs_eval.iter())
+                    .map(|(l, r)| {
+                        let exp = TryInto::<usize>::try_into(*r)
+                            .map_err(|_| (span, "exponentiation overflowed"))?;
+                        checked_pow(*l, exp)
+                            .ok_or((span, "exponentiation overflowed"))
+                    })
                     .collect()
             }
         }
