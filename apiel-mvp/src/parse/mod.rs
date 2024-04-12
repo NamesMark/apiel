@@ -10,9 +10,9 @@ lrpar_mod!("apiel.y");
 use apiel_y::Expr;
 
 #[cfg(feature = "debug")]
-use lrlex::DefaultLexeme; 
+use lrlex::DefaultLexeme;
 #[cfg(feature = "debug")]
-use lrpar::{Lexer, Lexeme};
+use lrpar::{Lexeme, Lexer};
 
 pub fn parse_and_evaluate(line: &str) -> Result<Vec<i64>, String> {
     let lexerdef = apiel_l::lexerdef();
@@ -42,7 +42,13 @@ pub fn parse_and_evaluate(line: &str) -> Result<Vec<i64>, String> {
             Ok(i) => Ok(i),
             Err((span, msg)) => {
                 let ((line, col), _) = lexer.line_col(span);
-                Err(format!("Evaluation error at line {} column {}: '{}', {}.", line, col, lexer.span_str(span), msg))
+                Err(format!(
+                    "Evaluation error at line {} column {}: '{}', {}.",
+                    line,
+                    col,
+                    lexer.span_str(span),
+                    msg
+                ))
             }
         }
     } else {

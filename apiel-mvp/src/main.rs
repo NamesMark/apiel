@@ -2,12 +2,13 @@
 
 use std::io::{self, BufRead, Write};
 
-use apiel_mvp::parse; 
+use apiel_mvp::parse;
 
 fn main() {
     let stdin = io::stdin();
 
-    println!(r#"
+    println!(
+        r#"
      /$$$$$$            /$$           /$$
     /$$__  $$          |__/          | $$
    | $$  \ $$  /$$$$$$  /$$  /$$$$$$ | $$
@@ -19,7 +20,8 @@ fn main() {
              | $$                        
              | $$                        
              |__/                        
-"#);
+"#
+    );
     #[cfg(feature = "debug")]
     {
         println!("Debug mode is on.");
