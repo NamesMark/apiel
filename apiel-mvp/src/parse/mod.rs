@@ -1,8 +1,9 @@
 pub mod eval;
+pub mod val;
 
 use cfgrammar::Span;
 use lrlex::{lrlex_mod, DefaultLexerTypes};
-use lrpar::{lrpar_mod, NonStreamingLexer};
+use lrpar::{lrpar_mod, Lexeme, Lexer, NonStreamingLexer};
 
 lrlex_mod!("apiel.l");
 lrpar_mod!("apiel.y");
@@ -14,21 +15,21 @@ use lrlex::DefaultLexeme;
 #[cfg(feature = "debug")]
 use lrpar::{Lexeme, Lexer};
 
-pub fn parse_and_evaluate(line: &str) -> Result<Vec<i64>, String> {
+pub fn parse_and_evaluate(line: &str) -> Result<Vec<f64>, String> {
     let lexerdef = apiel_l::lexerdef();
     let lexer = lexerdef.lexer(line);
 
-    #[cfg(feature = "debug")]
+    //#[cfg(feature = "debug")]
     {
-        println!("Tokens:");
+        let mut tokens = String::new();
         for tok in lexer.iter() {
             if let Ok(token) = tok {
-                print!("{} ", token.tok_id());
+                tokens.push_str(&format!("{} ", token.tok_id()));
             } else {
-                print!("UNKNOWN ");
+                tokens.push_str("UNKNOWN");
             }
         }
-        println!();
+        tracing::debug!(tokens, "Tokens:");
     }
 
     let (res, errs) = apiel_y::parse(&lexer);
@@ -38,8 +39,8 @@ pub fn parse_and_evaluate(line: &str) -> Result<Vec<i64>, String> {
     }
 
     if let Some(Ok(r)) = res {
-        match eval::eval::<i64>(&lexer, r) {
-            Ok(i) => Ok(i),
+        match eval::eval(&lexer, r) {
+            Ok(i) => Ok(i.into_iter().map(f64::from).collect()),
             Err((span, msg)) => {
                 let ((line, col), _) = lexer.line_col(span);
                 Err(format!(

@@ -24,19 +24,19 @@ List of supported glyphs and operations:
 | + | Conjugate | ✅* | Addition | ✅
 | - | Negate | ✅ | Subtraction | ✅
 | × | Direction | ✅ | Multiplication | ✅
-| ÷ | Reciprocal | ✅** | Division | ✅
-| * | Exponentiation | ✅** | Raising to power | ✅
-| ⍟ | Natural logarithm | ✅** | Logarithm | ✅
+| ÷ | Reciprocal | ✅ | Division | ✅
+| * | Exponentiation | ✅ | Raising to power | ✅
+| ⍟ | Natural logarithm | ✅ | Logarithm | ✅
 | ⌹ | Matrix inverse | - | Matrix divide | -
-| ○ | Pi Multiple | - | Circular functions | -
-| ! | Factorial | - | Binomial | -
-| ? | Roll | - | Deal | -
-| \| | Magnitude | - | Residue | -
-| ⌈ | Ceil | ** | Maximum | ✅
-| ⌊ | Floor | ** | Minimum | ✅
-| ⍳ | Generate index | - | Index of | -
-| ⍸ | Where | - | Interval index | -
-| / | Replicate | - | Reduce | -
+| ○ | Pi Multiple | ✅ | Circular functions | -
+| ! | Factorial | ✅ | Binomial | ✅
+| ? | Roll | ✅ | Deal | ✅
+| \| | Magnitude | ✅ | Residue | ✅
+| ⌈ | Ceil | ✅ | Maximum | ✅
+| ⌊ | Floor | ✅ | Minimum | ✅
+| ⍳ | Generate index | ✅ | Index of | -
+| ⍸ | Where | ✅ | Interval index | -
+| / | Replicate | - | Reduce | ✅
 | \ | Expand | - | Scan | -
 | , | Ravel | - | Catenate/Laminate | -
 | ⍴ | Shape | - | Reshape | -
@@ -46,7 +46,6 @@ List of supported glyphs and operations:
 | ← | - | - | Assignment | -
 
 - \* - Not implemented for complex numbers
-- ** - Requires floats
 
 ## Usage examples
 
