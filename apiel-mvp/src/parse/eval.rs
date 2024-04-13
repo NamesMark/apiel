@@ -1,7 +1,7 @@
 // MARK: eval
 use super::*;
-use eyre::{eyre, OptionExt, Result};
-use num::{checked_pow, FromPrimitive, ToPrimitive};
+use eyre::Result;
+use num::{FromPrimitive, ToPrimitive};
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, One, Pow};
 use tracing::{debug, error};
 
@@ -19,14 +19,14 @@ where
         (1, _) => {
             // Scalar on lhs, vector on rhs
             rhs.iter()
-                .map(|r| operation(&lhs[0], &r))
+                .map(|r| operation(&lhs[0], r))
                 .collect::<Result<Vec<N>, _>>()
                 .map_err(|_| (span, "Operation failed"))
         }
         (_, 1) => {
             // Vector on lhs, scalar on rhs
             lhs.iter()
-                .map(|l| operation(&l, &rhs[0]))
+                .map(|l| operation(l, &rhs[0]))
                 .collect::<Result<Vec<N>, _>>()
                 .map_err(|_| (span, "Operation failed"))
         }
@@ -34,7 +34,7 @@ where
             // Both vectors of the same size
             lhs.iter()
                 .zip(rhs.iter())
-                .map(|(l, r)| operation(&l, &r))
+                .map(|(l, r)| operation(l, r))
                 .collect::<Result<Vec<N>, _>>()
                 .map_err(|_| (span, "Operation failed"))
         }
@@ -56,7 +56,7 @@ where
     F: Fn(&N) -> Result<N, &'static str>,
 {
     arg.iter()
-        .map(|el| operation(el))
+        .map(operation)
         .collect::<Result<Vec<N>, _>>()
         .map_err(|_| (span, "Operation failed"))
 }
@@ -128,7 +128,7 @@ where
             let pow_operation = |a: &N, b: &N| -> Result<N, &'static str> {
                 let exponent = match TryInto::<usize>::try_into(*b) {
                     Ok(exp) => exp,
-                    Err(e) => return Err("Exponent must be a non-negative integer: {e}"),
+                    Err(_) => return Err("Exponent must be a non-negative integer"),
                 };
                 num_traits::pow::checked_pow(*a, exponent)
                     .ok_or("Exponentiation overflow or invalid operation")
@@ -210,6 +210,7 @@ where
         }
         Expr::Conjugate { span, arg } => {
             debug!("Monadic Conjugate");
+            let _ = span;
             // negates complex part of the number
             // real and non-numeric values remain the same
             // TODO: add support for imaginary numbers
@@ -252,6 +253,7 @@ where
         }
         Expr::Ceil { span, arg } => {
             debug!("Monadic Ceiling");
+            let _ = span;
             // TODO: complete after float branching added
             let arg_eval = eval::<N>(lexer, *arg)?;
 
@@ -263,6 +265,7 @@ where
         }
         Expr::Floor { span, arg } => {
             debug!("Monadic Floor");
+            let _ = span;
             // TODO: complete after float branching added
             let arg_eval = eval::<N>(lexer, *arg)?;
 
@@ -274,6 +277,7 @@ where
         }
         Expr::Reciprocal { span, arg } => {
             debug!("Monadic Reciprocal");
+            let _ = span;
             // Returns 1 ÷ arg
             // TODO
             let arg_eval = eval::<N>(lexer, *arg)?;
@@ -323,10 +327,11 @@ where
 
             if let Some(err) = results.iter().find_map(|r| r.as_ref().err()) {
                 error!(?span, "Error in vector evaluation at span: {:?}", err);
-                return Err(err.clone());
+                return Err(*err);
             }
 
-            let flattened_results: Vec<N> = results.into_iter()
+            let flattened_results: Vec<N> = results
+                .into_iter()
                 .filter_map(Result::ok)
                 .flatten()
                 .collect();
@@ -336,6 +341,6 @@ where
     }
 }
 
-fn check_lengths<N>(lhs_eval: &Vec<N>, rhs_eval: &Vec<N>) -> bool {
-    lhs_eval.len() == rhs_eval.len() || lhs_eval.len() == 1 || rhs_eval.len() == 1
-}
+// fn check_lengths<N>(lhs_eval: &Vec<N>, rhs_eval: &Vec<N>) -> bool {
+//     lhs_eval.len() == rhs_eval.len() || lhs_eval.len() == 1 || rhs_eval.len() == 1
+// }
