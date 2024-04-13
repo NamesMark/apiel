@@ -22,9 +22,12 @@ fn main() {
              |__/                        
 "#
     );
-    #[cfg(feature = "debug")]
+    //#[cfg(feature = "debug")]
     {
         println!("Debug mode is on.");
+        tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::TRACE)
+            .init();
     }
 
     loop {
