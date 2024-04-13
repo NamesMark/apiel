@@ -3,37 +3,56 @@
 %expect-unused Unmatched "UNMATCHED"
 %%
 Expr -> Result<Expr, ()>:
-      Term '+' Expr  {
-        Ok(Expr::Add{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
-      }
-    | 
-      Term '-' Expr {
-        Ok(Expr::Sub{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
-      }
-    | Term { $1 }
+    Term { $1 }
     ;
 
 Term -> Result<Expr, ()>:
-      Factor '×' Term {
+      Factor '+' Term  {
+        Ok(Expr::Add{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor '-' Term {
+        Ok(Expr::Sub{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor '×' Term {
         Ok(Expr::Mul{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
     | Factor '÷' Term {
         Ok(Expr::Div{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
     | Factor 'EXP' Term {
-        Ok(Expr::Exp{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+        Ok(Expr::Power{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
-    | MonadicFactor { $1 }
+    | MonadicFactor {
+        Ok($1?)
+      }
+    | Factor { $1 } 
     ;
 
 MonadicFactor -> Result<Expr, ()>:
-      'MAX' Factor {
+      '+' Factor {
+        Ok(Expr::Conjugate{ span: $span, arg: Box::new($2?) })
+      }
+    | '-' Factor {
+        Ok(Expr::Negate{ span: $span, arg: Box::new($2?) })
+      }
+    | '×' Factor {
+        Ok(Expr::Direction{ span: $span, arg: Box::new($2?) })
+      }
+    | '÷' Factor {
+        Ok(Expr::Reciprocal{ span: $span, arg: Box::new($2?) })
+      }
+    | 'EXP' Factor {
+        Ok(Expr::Exp{ span: $span, arg: Box::new($2?) })
+      }
+    | 'LOG' Factor {
+        Ok(Expr::NaturalLog{ span: $span, arg: Box::new($2?) })
+      }
+    | 'MAX' Factor {
         Ok(Expr::Max{ span: $span, arg: Box::new($2?) })
       }
-    | 'MIN' Factor {
+    |'MIN' Factor {
         Ok(Expr::Min{ span: $span, arg: Box::new($2?) })
       }
-    | Factor { $1 }
     ;
 
 Factor -> Result<Expr, ()>:
@@ -45,7 +64,11 @@ Factor -> Result<Expr, ()>:
                 let full_span = lexeme.span();
                 let full_str = $lexer.span_str(full_span);
                 let mut current_pos = full_span.start();
-                println!("Trying to parse vec: {}", full_str);
+                #[cfg(feature = "debug")]
+                {
+                    println!("Trying to parse vec: {}", full_str);
+                }
+
                 full_str.split_whitespace().map(|value| {
                     let start = full_str[current_pos..].find(value).unwrap_or(0) + current_pos;
                     let end = start + value.len();
@@ -96,10 +119,47 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
-    Exp {
+    Power {
         span: Span,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
+    },
+    Exp {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Log {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    NaturalLog {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Conjugate {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Negate {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Direction {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Reciprocal {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Ceil {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Floor {
+        span: Span,
+        arg: Box<Expr>,
     },
     Max {
         span: Span,

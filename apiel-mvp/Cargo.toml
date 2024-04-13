@@ -21,6 +21,7 @@ lrlex = "0.13.4"
 lrpar = "0.13.4"
 num = "0.4.1"
 num-traits = "0.2.18"
+tracing = "0.1.40"
 
 [features]
 debug = []

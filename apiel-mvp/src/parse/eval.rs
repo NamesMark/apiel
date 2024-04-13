@@ -1,206 +1,252 @@
 // MARK: eval
 use super::*;
-use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
-use num::checked_pow;
+use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub, One, Pow};
+use num::{checked_pow, FromPrimitive, ToPrimitive};
 use eyre::{Result, eyre, OptionExt};
 
-pub fn eval<
-    N: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + std::str::FromStr + std::fmt::Debug + Copy + num::One + TryInto<usize> + Ord,
->(
+fn apply_dyadic_operation<N, F>(span: Span, lhs: &[N], rhs: &[N], operation: F) -> Result<Vec<N>, (Span, &'static str)>
+where
+    N: PartialOrd,
+    F: Fn(&N, &N) -> Result<N, &'static str>,
+{
+    match (lhs.len(), rhs.len()) {
+        (1, _) => {
+            // Scalar on lhs, vector on rhs
+            rhs.iter()
+                .map(|r| operation(&lhs[0], &r))
+                .collect::<Result<Vec<N>, _>>()
+                .map_err(|_| (span, "Operation failed"))
+        },
+        (_, 1) => {
+            // Vector on lhs, scalar on rhs
+            lhs.iter()
+                .map(|l| operation(&l, &rhs[0]))
+                .collect::<Result<Vec<N>, _>>()
+                .map_err(|_| (span, "Operation failed"))
+        },
+        (_, _) if lhs.len() == rhs.len() => {
+            // Both vectors of the same size
+            lhs.iter()
+                .zip(rhs.iter())
+                .map(|(l, r)| operation(&l, &r))
+                .collect::<Result<Vec<N>, _>>()
+                .map_err(|_| (span, "Operation failed"))
+        },
+        // Bad vector sizes
+        _ => Err((Span::new(0, 0), "operands must be of the same size or one must be scalar")),
+    }
+}
+
+fn apply_monadic_operation<N, F>(span: Span, arg: &[N], operation: F) -> Result<Vec<N>, (Span, &'static str)>
+where
+    N: PartialOrd,
+    F: Fn(&N) -> Result<N, &'static str>,
+{
+    arg.iter()
+        .map(|el| operation(el))
+        .collect::<Result<Vec<N>, _>>()
+        .map_err(|_| (span, "Operation failed"))
+}
+
+pub fn eval<N>(
     lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
     e: Expr,
-) -> Result<Vec<N>, (Span, &'static str)> {
+) -> Result<Vec<N>, (Span, &'static str)>
+where
+    N: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + CheckedNeg + Pow<usize, Output = N> + std::str::FromStr + std::fmt::Debug + Copy + TryInto<usize> + Ord + One + ToPrimitive + FromPrimitive,
+{
     match e {
         Expr::Add { span, lhs, rhs } => {
             let lhs_eval = eval::<N>(lexer, *lhs)?;
             let rhs_eval = eval::<N>(lexer, *rhs)?;
 
-            if !check_lengths(&lhs_eval, &rhs_eval) {
-                return Err((
-                    span,
-                    "Can only add same-sized vectors, scalars, or scalar to vector",
-                ));
-            }
+            let add_operation = |a: &N, b: &N| Ok(*a + *b);
 
-            if lhs_eval.len() == 1 {
-                rhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_add(&lhs_eval[0])
-                            .ok_or((span, "addition overflowed"))
-                    })
-                    .collect()
-            } else if rhs_eval.len() == 1 {
-                lhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_add(&rhs_eval[0])
-                            .ok_or((span, "addition overflowed"))
-                    })
-                    .collect()
-            } else {
-                lhs_eval
-                    .iter()
-                    .zip(rhs_eval.iter())
-                    .map(|(l, r)| l.checked_add(r).ok_or((span, "addition overflowed")))
-                    .collect()
-            }
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, add_operation)
         }
         Expr::Sub { span, lhs, rhs } => {
             let lhs_eval = eval::<N>(lexer, *lhs)?;
             let rhs_eval = eval::<N>(lexer, *rhs)?;
 
-            if !check_lengths(&lhs_eval, &rhs_eval) {
-                return Err((
-                    span,
-                    "Can only substract same-sized vectors, scalars, or scalar from vector",
-                ));
-            }
+            let sub_operation = |a: &N, b: &N| Ok(*a - *b);
 
-            if lhs_eval.len() == 1 {
-                rhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_sub(&lhs_eval[0])
-                            .ok_or((span, "subtraction overflowed"))
-                    })
-                    .collect()
-            } else if rhs_eval.len() == 1 {
-                lhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_sub(&rhs_eval[0])
-                            .ok_or((span, "subtraction overflowed"))
-                    })
-                    .collect()
-            } else {
-                lhs_eval
-                    .iter()
-                    .zip(rhs_eval.iter())
-                    .map(|(l, r)| l.checked_sub(r).ok_or((span, "subtraction overflowed")))
-                    .collect()
-            }
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, sub_operation)
         }
         Expr::Mul { span, lhs, rhs } => {
             let lhs_eval = eval::<N>(lexer, *lhs)?;
             let rhs_eval = eval::<N>(lexer, *rhs)?;
 
-            if !check_lengths(&lhs_eval, &rhs_eval) {
-                return Err((
-                    span,
-                    "Can only multiply same-sized vectors, scalars, or vector by scalar",
-                ));
-            }
+            let mul_operation = |a: &N, b: &N| Ok(*a * *b);
 
-            if lhs_eval.len() == 1 {
-                rhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_mul(&lhs_eval[0])
-                            .ok_or((span, "multiplication overflowed"))
-                    })
-                    .collect()
-            } else if rhs_eval.len() == 1 {
-                lhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_mul(&rhs_eval[0])
-                            .ok_or((span, "multiplication overflowed"))
-                    })
-                    .collect()
-            } else {
-                lhs_eval
-                    .iter()
-                    .zip(rhs_eval.iter())
-                    .map(|(l, r)| l.checked_mul(r).ok_or((span, "multiplication overflowed")))
-                    .collect()
-            }
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, mul_operation)
         }
         Expr::Div { span, lhs, rhs } => {
             let lhs_eval = eval::<N>(lexer, *lhs)?;
             let rhs_eval = eval::<N>(lexer, *rhs)?;
 
-            if !check_lengths(&lhs_eval, &rhs_eval) {
-                return Err((
-                    span,
-                    "Can only divide same-sized vectors, scalars, or vector by scalar",
-                ));
-            }
+            let div_operation = |a: &N, b: &N| Ok(*a / *b);
 
-            if lhs_eval.len() == 1 {
-                rhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_div(&lhs_eval[0])
-                            .ok_or((span, "division overflowed"))
-                    })
-                    .collect()
-            } else if rhs_eval.len() == 1 {
-                lhs_eval
-                    .iter()
-                    .map(|num| {
-                        num.checked_div(&rhs_eval[0])
-                            .ok_or((span, "division overflowed"))
-                    })
-                    .collect()
-            } else {
-                lhs_eval
-                    .iter()
-                    .zip(rhs_eval.iter())
-                    .map(|(l, r)| l.checked_div(r).ok_or((span, "division overflowed")))
-                    .collect()
-            }
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, div_operation)
         }
-        Expr::Exp { span, lhs, rhs } => {
+        Expr::Power { span, lhs, rhs } => {
+            // raise left to the power of right
             let lhs_eval = eval::<N>(lexer, *lhs)?;
             let rhs_eval = eval::<N>(lexer, *rhs)?;
         
-            if !check_lengths(&lhs_eval, &rhs_eval) {
-                return Err((
-                    span,
-                    "Can only raise to the power of same-sized vectors, scalars, or vector by scalar",
-                ));
-            }
+            let pow_operation = |a: &N, b: &N| -> Result<N, &'static str> {
+                let exponent = match TryInto::<usize>::try_into(*b) { 
+                    Ok(exp) => exp,
+                    Err(e) => return Err("Exponent must be a non-negative integer: {e}")
+                };
+                num_traits::pow::checked_pow(*a, exponent)
+                    .ok_or("Exponentiation overflow or invalid operation")
+            };
         
-            if lhs_eval.len() == 1 {
-                rhs_eval
-                    .iter()
-                    .map(|num| {
-                        let exponent = TryInto::<usize>::try_into(lhs_eval[0])
-                            .map_err(|_| (span, "cannot be represented as a valid number"))?;
-                        checked_pow(*num, exponent)
-                            .ok_or((span, "exponentiation overflowed"))
-                    })
-                    .collect()
-            } else if rhs_eval.len() == 1 {
-                lhs_eval
-                    .iter()
-                    .map(|num| {
-                        let exponent = TryInto::<usize>::try_into(rhs_eval[0])
-                            .map_err(|_| (span, "cannot be represented as a valid number"))?;
-                        checked_pow(*num, exponent)
-                            .ok_or((span, "exponentiation overflowed"))
-                    })
-                    .collect()
-            } else {
-                lhs_eval
-                    .iter()
-                    .zip(rhs_eval.iter())
-                    .map(|(l, r)| {
-                        let exp = TryInto::<usize>::try_into(*r)
-                            .map_err(|_| (span, "exponentiation overflowed"))?;
-                        checked_pow(*l, exp)
-                            .ok_or((span, "exponentiation overflowed"))
-                    })
-                    .collect()
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, pow_operation)
+        }
+        Expr::Exp { span, arg } => {
+            // raise e to the power of arg
+            let arg_eval = eval::<N>(lexer, *arg)?;
+
+            let arg_float: Vec<f64> = arg_eval.iter().filter_map(|n| n.to_f64()).collect();
+
+            let exp_operation = |a: &f64| -> Result<f64, &'static str> {
+                Ok(a.exp())
+            };
+
+            let results: Result<Vec<_>, _> = apply_monadic_operation(span, &arg_float, exp_operation)
+            .map(|vec| vec.iter().filter_map(|&n| N::from_f64(n)).collect());
+
+            match results {
+                Ok(vec) if vec.len() == arg_float.len() => Ok(vec),
+                _ => Err((span, "conversion from floating-point failed")),
             }
         }
-        Expr::Max { span,arg } => {
+        Expr::Log { span, lhs, rhs } => {
+            let lhs_eval = eval::<N>(lexer, *lhs)?;
+            let rhs_eval = eval::<N>(lexer, *rhs)?;
+
+            // Convert both operands to f64 for floating-point operations
+            let lhs_float: Vec<f64> = lhs_eval.iter().filter_map(|n| n.to_f64()).collect();
+            let rhs_float: Vec<f64> = rhs_eval.iter().filter_map(|n| n.to_f64()).collect();
+
+            if lhs_float.len() != lhs_eval.len() || rhs_float.len() != rhs_eval.len() {
+                return Err((span, "conversion to floating-point failed"));
+            }
+
+            let log_operation = |base: &f64, value: &f64| -> Result<f64, &'static str> {
+                if *value > 0.0 && *base > 0.0 && *base != 1.0 {
+                    Ok(value.log(*base))
+                } else {
+                    Err("logarithm undefined for non-positive base or value")
+                }
+            };
+
+            // Apply operation and convert results back to N
+            let results: Result<Vec<_>, _> = apply_dyadic_operation(span, &lhs_float, &rhs_float, log_operation)
+                .map(|vec| vec.iter().filter_map(|&n| N::from_f64(n)).collect());
+
+            match results {
+                Ok(vec) if vec.len() == lhs_float.len() => Ok(vec),
+                _ => Err((span, "conversion from floating-point failed")),
+            }
+        }
+        Expr::NaturalLog { span, arg } => {
+            let arg_eval = eval::<N>(lexer, *arg)?;
+
+            let arg_float: Vec<f64> = arg_eval.iter().filter_map(|n| n.to_f64()).collect();
+
+            let nat_log_operation = |value: &f64| -> Result<f64, &'static str> {
+                if *value > 0.0 {
+                    Ok(value.ln())
+                } else {
+                    Err("logarithm undefined for non-positive base or value")
+                }
+            };
+    
+            let results: Result<Vec<_>, _> = apply_monadic_operation(span, &arg_float, nat_log_operation)
+                .map(|vec| vec.iter().filter_map(|&n| N::from_f64(n)).collect());
+
+            match results {
+                Ok(vec) if vec.len() == arg_float.len() => Ok(vec),
+                _ => Err((span, "conversion from floating-point failed")),
+            }
+        }
+        Expr::Conjugate { span, arg } => {
+            // negates complex part of the number
+            // real and non-numeric values remain the same 
+            // TODO: add support for imaginary numbers
+            let arg_eval = eval::<N>(lexer, *arg)?;
+            Ok(arg_eval)
+        }
+        Expr::Negate { span, arg } => {
+            let arg_eval = eval::<N>(lexer, *arg)?;
+
+            apply_monadic_operation(span, &arg_eval, |&n| {
+                n.checked_neg().ok_or("Negation overflowed")
+            })
+        }
+        Expr::Direction { span, arg } => {
+            // For real numbers: returns -1, 0, or 1 for each number
+            // TODO: add support for imaginary numbers
+            let arg_eval = eval::<N>(lexer, *arg)?;
+
+            let arg_float: Vec<f64> = arg_eval.iter().filter_map(|n| n.to_f64()).collect();
+
+            fn direction_op(value: &f64) -> Result<f64, &'static str> {
+                match value.partial_cmp(&0.0) {
+                    Some(std::cmp::Ordering::Less) => Ok(-1.0),
+                    Some(std::cmp::Ordering::Equal) => Ok(0.0),
+                    Some(std::cmp::Ordering::Greater) => Ok(1.0),
+                    None => Err("Comparison failed, possibly due to NaN"),
+                }
+            }
+
+            let results: Result<Vec<_>, _> = apply_monadic_operation(span, &arg_float, direction_op)
+                .map(|vec| vec.iter().filter_map(|&n| N::from_f64(n)).collect());
+
+            match results {
+                Ok(vec) if vec.len() == arg_float.len() => Ok(vec),
+                _ => Err((span, "conversion from floating-point failed")),
+            }
+        }
+        Expr::Ceil { span, arg } => {
+            // TODO: complete after float branching added
+            let arg_eval = eval::<N>(lexer, *arg)?;
+
+            // let ceil_operation = |a: &N| Ok(a.ceil());
+
+            // apply_monadic_operation(span, &arg_eval, ceil_operation)
+
+            Ok(arg_eval)
+        }
+        Expr::Floor { span, arg } => {
+            // TODO: complete after float branching added
+            let arg_eval = eval::<N>(lexer, *arg)?;
+
+            // let floor_operation = |a: &N| Ok(a.floor());
+
+            // apply_monadic_operation(span, &arg_eval, floor_operation)
+
+            Ok(arg_eval)
+        }
+        Expr::Reciprocal { span, arg } => {
+            // Returns 1 ÷ arg
+            // TODO
+            let arg_eval = eval::<N>(lexer, *arg)?;
+
+            // let floor_operation = |a: &N| Ok(a.floor());
+
+            // apply_monadic_operation(span, &arg_eval, floor_operation)
+
+            Ok(arg_eval)
+        }
+        Expr::Max { span, arg } => {
             let arg_eval = eval::<N>(lexer, *arg)?;
         
             arg_eval.iter().max().ok_or((span, "Cannot find max")).map(|&num| vec![num])
         }
-        Expr::Min { span,arg } => {
+        Expr::Min { span, arg } => {
             let arg_eval = eval::<N>(lexer, *arg)?;
         
             arg_eval.iter().min().ok_or((span, "Cannot find max")).map(|&num| vec![num])
