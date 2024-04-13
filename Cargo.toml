@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "apiel",
+    "apiel-cli",
+    "apiel-mvp",
+]
+
+[workspace.dependencies]
+cfgrammar = "0.13.4"
+lrlex = "0.13.4"
+lrpar = "0.13.4"
