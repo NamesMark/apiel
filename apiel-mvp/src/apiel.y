@@ -61,24 +61,25 @@ Factor -> Result<Expr, ()>:
     | 'VEC' {
         let elements = match $1 {
             Ok(lexeme) => {
-                let full_span = lexeme.span();
-                let full_str = $lexer.span_str(full_span);
-                let mut current_pos = full_span.start();
+                let full_str = $lexer.span_str($span);
+                let mut current_pos = 0;
+                let mut elements = Vec::new();
+                
                 #[cfg(feature = "debug")]
                 {
                     println!("Trying to parse vec: {}", full_str);
                 }
 
-                full_str.split_whitespace().map(|value| {
+                for (index, value) in full_str.split_whitespace().enumerate() {
                     let start = full_str[current_pos..].find(value).unwrap_or(0) + current_pos;
                     let end = start + value.len();
-                    current_pos = end;
-                    Expr::Scalar { span: Span::new(start, end) }
-                }).collect::<Vec<_>>()
+                    current_pos = end; 
+
+                    elements.push(Expr::Scalar { span: Span::new(start + $span.start(), end + $span.start()) });
+                }
+                elements
             },
-            Err(_) => {
-                vec![]
-            }
+            Err(_) => Vec::new(), 
         };
         Ok(Expr::Vector { span: $span, elements })
     }

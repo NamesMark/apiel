@@ -316,17 +316,22 @@ where
             debug!("Vector");
             debug!(?elements, "Vector elements");
 
-            let results: Vec<Result<N, _>> = elements
+            let results: Vec<Result<Vec<N>, (Span, &'static str)>> = elements
                 .into_iter()
                 .map(|elem| eval::<N>(lexer, elem))
                 .collect();
 
-            if results.iter().any(Result::is_err) {
-                error!(?span, "Error in vector evaluation at span");
-                return Err((span, "error evaluating one or more vector elements"));
+            if let Some(err) = results.iter().find_map(|r| r.as_ref().err()) {
+                error!(?span, "Error in vector evaluation at span: {:?}", err);
+                return Err(err.clone());
             }
 
-            Ok(results.into_iter().filter_map(Result::ok).collect())
+            let flattened_results: Vec<N> = results.into_iter()
+                .filter_map(Result::ok)
+                .flatten()
+                .collect();
+
+            Ok(flattened_results)
         }
     }
 }
