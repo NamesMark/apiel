@@ -16,6 +16,7 @@ lrpar = "0.13.4"
 
 [dependencies]
 cfgrammar = "0.13.4"
+eyre = "0.6.12"
 lrlex = "0.13.4"
 lrpar = "0.13.4"
 num = "0.4.1"

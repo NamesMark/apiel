@@ -2,9 +2,10 @@
 use super::*;
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedSub};
 use num::checked_pow;
+use eyre::{Result, eyre, OptionExt};
 
 pub fn eval<
-    N: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + std::str::FromStr + std::fmt::Debug + Copy + num::One + TryInto<usize>,
+    N: CheckedAdd + CheckedSub + CheckedDiv + CheckedMul + std::str::FromStr + std::fmt::Debug + Copy + num::One + TryInto<usize> + Ord,
 >(
     lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
     e: Expr,
@@ -193,6 +194,16 @@ pub fn eval<
                     })
                     .collect()
             }
+        }
+        Expr::Max { span,arg } => {
+            let arg_eval = eval::<N>(lexer, *arg)?;
+        
+            arg_eval.iter().max().ok_or((span, "Cannot find max")).map(|&num| vec![num])
+        }
+        Expr::Min { span,arg } => {
+            let arg_eval = eval::<N>(lexer, *arg)?;
+        
+            arg_eval.iter().min().ok_or((span, "Cannot find max")).map(|&num| vec![num])
         }
         Expr::Scalar { span, .. } => lexer
             .span_str(span)

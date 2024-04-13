@@ -23,31 +23,42 @@ Term -> Result<Expr, ()>:
     | Factor 'EXP' Term {
         Ok(Expr::Exp{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | MonadicFactor { $1 }
+    ;
+
+MonadicFactor -> Result<Expr, ()>:
+      'MAX' Factor {
+        Ok(Expr::Max{ span: $span, arg: Box::new($2?) })
+      }
+    | 'MIN' Factor {
+        Ok(Expr::Min{ span: $span, arg: Box::new($2?) })
+      }
     | Factor { $1 }
     ;
 
 Factor -> Result<Expr, ()>:
       '(' Expr ')' { $2 }
-| 'VEC' {
-    let elements = match $1 {
-        Ok(lexeme) => {
-            let full_span = lexeme.span();
-            let full_str = $lexer.span_str(full_span);
-            let mut current_pos = full_span.start();
-            println!("Trying to parse vec: {}", full_str);
-            full_str.split_whitespace().map(|value| {
-                let start = full_str[current_pos..].find(value).unwrap() + current_pos;
-                let end = start + value.len();
-                current_pos = end;
-                Expr::Scalar { span: Span::new(start, end) }
-            }).collect::<Vec<_>>()
-        },
-        Err(_) => {
-            vec![]
-        }
-    };
-    Ok(Expr::Vector { span: $span, elements })
-}
+
+    | 'VEC' {
+        let elements = match $1 {
+            Ok(lexeme) => {
+                let full_span = lexeme.span();
+                let full_str = $lexer.span_str(full_span);
+                let mut current_pos = full_span.start();
+                println!("Trying to parse vec: {}", full_str);
+                full_str.split_whitespace().map(|value| {
+                    let start = full_str[current_pos..].find(value).unwrap_or(0) + current_pos;
+                    let end = start + value.len();
+                    current_pos = end;
+                    Expr::Scalar { span: Span::new(start, end) }
+                }).collect::<Vec<_>>()
+            },
+            Err(_) => {
+                vec![]
+            }
+        };
+        Ok(Expr::Vector { span: $span, elements })
+    }
     | 'INT' {
         match $1 {
             Ok(lexeme) => Ok(Expr::Scalar { span: $span }),
@@ -89,6 +100,14 @@ pub enum Expr {
         span: Span,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
+    },
+    Max {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Min {
+        span: Span,
+        arg: Box<Expr>,
     },
     Scalar {
         span: Span,
