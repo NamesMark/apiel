@@ -2,7 +2,7 @@
 
 use std::io::{self, BufRead, Write};
 
-use apiel::parse;
+use apiel::apl;
 
 fn main() {
     tracing_subscriber::fmt().init();
@@ -33,7 +33,7 @@ fn main() {
                 if line.trim().is_empty() {
                     continue;
                 }
-                match parse::parse_and_evaluate(&line) {
+                match apl!(&line) {
                     Ok(result) => println!("Result: {:?}", result),
                     Err(err) => tracing::error!("{}", err),
                 }
