@@ -2,7 +2,7 @@ use conv::ConvUtil;
 use eyre::Result;
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialOrd)]
 pub enum Val {
     Float(f64),
     Integer(i64),
@@ -72,12 +72,6 @@ impl PartialEq for Val {
 }
 
 impl Eq for Val {}
-
-impl PartialOrd for Val {
-    fn partial_cmp(&self, other: &Val) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
 
 impl Ord for Val {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {

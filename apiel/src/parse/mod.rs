@@ -19,11 +19,13 @@ pub fn parse_and_evaluate(line: &str) -> Result<Vec<f64>, String> {
 
     {
         let mut tokens = String::new();
-        for tok in lexer.iter() {
-            if let Ok(token) = tok {
-                tokens.push_str(&format!("{} ", token.tok_id()));
-            } else {
-                tokens.push_str("UNKNOWN");
+        for token in lexer.iter() {
+            match token {
+                Ok(token) => tokens.push_str(&format!("{} ", token.tok_id())),
+                Err(e) => {
+                    tracing::warn!("Failed to parse a token: {e}");
+                    tokens.push_str("UNKNOWN");
+                },
             }
         }
         tracing::debug!(tokens, "Tokens:");
