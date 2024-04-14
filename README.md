@@ -13,7 +13,7 @@ APL was the first language in an "Array programming" or "Iversonian" paradigm. T
 
 ## Usage 
 
-```cargo run``` or ```cargo run --features debug```
+```cargo run``` or ```RUST_LOG=debug cargo run``` for debugging output.
 
 Enter commands in the terminal.
 

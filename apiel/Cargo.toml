@@ -3,6 +3,9 @@ name = "apiel"
 version = "0.1.0"
 authors = ["Mark Firman <markfirmanwork@gmail.com>"]
 edition = "2021"
+homepage = "https://github.com/NamesMark/apiel"
+repository = "https://github.com/NamesMark/apiel/apiel"
+license = "MIT"
 build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

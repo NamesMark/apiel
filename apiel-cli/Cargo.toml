@@ -3,17 +3,15 @@ name = "apiel-cli"
 version = "0.1.0"
 authors = ["Mark Firman <markfirmanwork@gmail.com>"]
 edition = "2021"
+homepage = "https://github.com/NamesMark/apiel"
+repository = "https://github.com/NamesMark/apiel/apiel-cli"
+license = "MIT"
 
 [[bin]]
 doc = false
 name = "apiel-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[build-dependencies]
-cfgrammar = "0.13.4"
-lrlex = "0.13.4"
-lrpar = "0.13.4"
 
 [dependencies]
 apiel = { path = "../apiel" }
