@@ -113,7 +113,7 @@ Factor -> Result<Expr, ()>:
                 
                 #[cfg(feature = "debug")]
                 {
-                    println!("Trying to parse vec: {}", full_str);
+                    !("Trying to parse vec: {}", full_str);
                 }
 
                 for value in full_str.split_whitespace() {

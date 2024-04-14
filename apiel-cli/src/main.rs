@@ -2,9 +2,11 @@
 
 use std::io::{self, BufRead, Write};
 
-use apiel_mvp::parse;
+use apiel::parse;
 
 fn main() {
+    tracing_subscriber::fmt().init();
+
     let stdin = io::stdin();
 
     println!(
@@ -22,13 +24,6 @@ fn main() {
              |__/                        
 "#
     );
-    #[cfg(feature = "debug")]
-    {
-        println!("Debug mode is on.");
-        tracing_subscriber::fmt()
-            .with_max_level(tracing::Level::TRACE)
-            .init();
-    }
 
     loop {
         print!(">>> ");
@@ -40,7 +35,7 @@ fn main() {
                 }
                 match parse::parse_and_evaluate(&line) {
                     Ok(result) => println!("Result: {:?}", result),
-                    Err(err) => eprintln!("{}", err),
+                    Err(err) => tracing::error!("{}", err),
                 }
             }
             _ => break,

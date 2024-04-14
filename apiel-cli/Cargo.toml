@@ -1,11 +1,12 @@
 [package]
-name = "apiel-mvp"
+name = "apiel-cli"
 version = "0.1.0"
+authors = ["Mark Firman <markfirmanwork@gmail.com>"]
 edition = "2021"
 
 [[bin]]
 doc = false
-name = "apiel-mvp"
+name = "apiel-cli"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,16 +16,8 @@ lrlex = "0.13.4"
 lrpar = "0.13.4"
 
 [dependencies]
-cfgrammar = "0.13.4"
-conv = "0.3.3"
-eyre = "0.6.12"
-lrlex = "0.13.4"
-lrpar = "0.13.4"
-num = "0.4.1"
-num-traits = "0.2.18"
-rand = "0.8.5"
+apiel = { path = "../apiel" }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 
 [features]
-debug = []

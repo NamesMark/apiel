@@ -1,6 +1,7 @@
 [workspace]
 members = [
-    "apiel-mvp",
+    "apiel",
+    "apiel-cli",
 ]
 
 [workspace.dependencies]
