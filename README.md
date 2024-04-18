@@ -21,3 +21,72 @@ My main entry point is apiel/src/parse/mod.rs. There is `fn parse_and_evaluate()
 
 ## Usage
 
+```cargo run``` or ```RUST_LOG=debug cargo run``` for debugging output.
+
+Enter commands in the terminal.
+
+List of supported glyphs and operations:
+
+| Glyph | Monadic operation | Impl. | Dyadic operation | Impl.
+| --- | ---------------- | ----------- | ----------- | ----------- |
+| + | Conjugate | ✅* | Addition | ✅
+| - | Negate | ✅ | Subtraction | ✅
+| × | Direction | ✅ | Multiplication | ✅
+| ÷ | Reciprocal | ✅ | Division | ✅
+| * | Exponentiation | ✅ | Raising to power | ✅
+| ⍟ | Natural logarithm | ✅ | Logarithm | ✅
+| ⌹ | Matrix inverse | - | Matrix divide | -
+| ○ | Pi Multiple | ✅ | Circular functions | -
+| ! | Factorial | ✅ | Binomial | ✅
+| ? | Roll | ✅ | Deal | ✅
+| \| | Magnitude | ✅ | Residue | ✅
+| ⌈ | Ceil | ✅ | Maximum | ✅
+| ⌊ | Floor | ✅ | Minimum | ✅
+| ⍳ | Generate index | ✅ | Index of | -
+| ⍸ | Where | ✅ | Interval index | -
+| / | Replicate | - | Reduce | ✅
+| \ | Expand | - | Scan | -
+| , | Ravel | - | Catenate/Laminate | -
+| ⍴ | Shape | - | Reshape | -
+| . | - | - | Product | -
+| ∘. | - | - | Outer Product | -
+| = | - | - | Equality | -
+| ← | - | - | Assignment | -
+
+- \* - Not implemented for complex numbers
+
+## Usage examples
+
+```
+// Dyadic op. Division: vector by scalar
+>>> 5 25 125 ÷ 5
+Result: [1, 5, 25]
+// Dyadic op. Addition: vector on vector
+>>> 1 2 3 + 4 5 6
+Result: [5, 7, 9]
+// Monadic op. Addition: vector on vector
+>>> + 1 2 3 
+Result: [1, 2, 3]
+>>> - 1 2 3 
+Result: [-1, -2, -3]
+>>> 1 2 3 × 2 4 6
+Result: [2, 8, 18]
+>>> 1 2 3 * 2 4 6         
+Result: [1, 16, 729]
+>>> * 1 2 3
+Result: [2, 7, 20]
+>>> ⍟ 1 2 3
+Result: [0, 0, 1]
+>>> ⍟ 5 10 100
+Result: [1, 2, 4]
+>>> 10 - 1 2 3
+Result: [9, 8, 7]
+>>> 20 40 60 ÷ 2 4     
+Evaluation error at line 1 column 1: '', operands must be of the same size or one must be scalar.
+>>> ⍟ 10 100 1000
+Result: [2, 4, 6]
+>>> ⌈ 3 6 9 1
+Result: [9]
+>>> ⌊ 5 10 29 1
+Result: [1]
+```
