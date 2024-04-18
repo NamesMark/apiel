@@ -213,8 +213,8 @@ pub fn eval(
             }
 
             let (lhs, rhs) = match (lhs_eval[0], rhs_eval[0]) {
-                (Val::Integer(lhs), Val::Integer(rhs)) if rhs >= lhs => (lhs, rhs),
-                _ => return Err((span, "Deal arguments must be integers; right argument must be greater than or equal to the left argument")),
+                (Val::Integer(lhs), Val::Integer(rhs)) => (lhs, rhs),
+                _ => return Err((span, "Deal arguments must be integers")),
             };
 
             let mut rng = rand::thread_rng();
