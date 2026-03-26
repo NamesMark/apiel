@@ -2,8 +2,8 @@ pub mod eval;
 pub mod val;
 
 use cfgrammar::Span;
-use lrlex::{lrlex_mod, DefaultLexerTypes};
-use lrpar::{lrpar_mod, Lexeme, Lexer, NonStreamingLexer};
+use lrlex::{DefaultLexerTypes, lrlex_mod};
+use lrpar::{Lexeme, Lexer, NonStreamingLexer, lrpar_mod};
 
 lrlex_mod!("apiel.l");
 lrpar_mod!("apiel.y");
@@ -32,7 +32,7 @@ pub fn eval_to_val(line: &str, env: &mut Env) -> Result<Val, String> {
                 Err(e) => {
                     tracing::warn!("Failed to parse a token: {e}");
                     tokens.push_str("UNKNOWN");
-                },
+                }
             }
         }
         tracing::debug!(tokens, "Tokens:");
@@ -49,7 +49,10 @@ pub fn eval_to_val(line: &str, env: &mut Env) -> Result<Val, String> {
             let ((line, col), _) = lexer.line_col(span);
             format!(
                 "Evaluation error at line {} column {}: '{}', {}.",
-                line, col, lexer.span_str(span), msg
+                line,
+                col,
+                lexer.span_str(span),
+                msg
             )
         })
     } else {
@@ -60,17 +63,24 @@ pub fn eval_to_val(line: &str, env: &mut Env) -> Result<Val, String> {
 pub fn format_val(val: &Val) -> String {
     if val.data.iter().all(|s| matches!(s, Scalar::Char(_))) {
         // All chars: display as string
-        val.data.iter().map(|s| match s {
-            Scalar::Char(c) => *c,
-            _ => ' ',
-        }).collect()
+        val.data
+            .iter()
+            .map(|s| match s {
+                Scalar::Char(c) => *c,
+                _ => ' ',
+            })
+            .collect()
     } else {
-        val.data.iter().map(|v| match v {
-            Scalar::Integer(i) => format!("{i}"),
-            Scalar::Float(f) if f.fract() == 0.0 => format!("{}", *f as i64),
-            Scalar::Float(f) => format!("{f}"),
-            Scalar::Char(c) => format!("{c}"),
-            Scalar::Nested(v) => format!("({})", format_val(v)),
-        }).collect::<Vec<_>>().join(" ")
+        val.data
+            .iter()
+            .map(|v| match v {
+                Scalar::Integer(i) => format!("{i}"),
+                Scalar::Float(f) if f.fract() == 0.0 => format!("{}", *f as i64),
+                Scalar::Float(f) => format!("{f}"),
+                Scalar::Char(c) => format!("{c}"),
+                Scalar::Nested(v) => format!("({})", format_val(v)),
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
     }
 }
