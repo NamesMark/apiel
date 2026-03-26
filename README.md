@@ -38,15 +38,23 @@ List of supported glyphs and operations:
 | \| | Magnitude | ✅ | Residue | ✅
 | ⌈ | Ceil | ✅ | Maximum | ✅
 | ⌊ | Floor | ✅ | Minimum | ✅
-| ⍳ | Generate index | ✅ | Index of | -
-| ⍸ | Where | ✅ | Interval index | -
+| ⍳ | Generate index | ✅ | Index of | ✅
+| ⍸ | Where | ✅ | Interval index | ✅
 | / | Replicate | - | Reduce | ✅
 | \ | Expand | - | Scan | -
-| , | Ravel | - | Catenate/Laminate | -
-| ⍴ | Shape | - | Reshape | -
+| , | Ravel | ✅ | Catenate | ✅
+| ⍴ | Shape | ✅ | Reshape | ✅
+| ⌽ | Reverse | ✅ | Rotate | ✅
+| ⍉ | Transpose | ✅ | - | -
+| = | - | - | Equality | ✅
+| ≠ | - | - | Not Equal | ✅
+| < | - | - | Less Than | ✅
+| > | - | - | Greater Than | ✅
+| ≤ | - | - | Less or Equal | ✅
+| ≥ | - | - | Greater or Equal | ✅
+| ¯ | High minus (negative literal) | ✅ | - | -
 | . | - | - | Product | -
 | ∘. | - | - | Outer Product | -
-| = | - | - | Equality | -
 | ← | - | - | Assignment | -
 
 - \* - Not implemented for complex numbers
@@ -54,37 +62,30 @@ List of supported glyphs and operations:
 ## Usage examples
 
 ```
-// Dyadic op. Division: vector by scalar
 >>> 5 25 125 ÷ 5
-Result: [1, 5, 25]
-// Dyadic op. Addition: vector on vector
+1 5 25
 >>> 1 2 3 + 4 5 6
-Result: [5, 7, 9]
-// Monadic op. Addition: vector on vector
->>> + 1 2 3 
-Result: [1, 2, 3]
->>> - 1 2 3 
-Result: [-1, -2, -3]
->>> 1 2 3 × 2 4 6
-Result: [2, 8, 18]
->>> 1 2 3 * 2 4 6         
-Result: [1, 16, 729]
->>> * 1 2 3
-Result: [2, 7, 20]
->>> ⍟ 1 2 3
-Result: [0, 0, 1]
->>> ⍟ 5 10 100
-Result: [1, 2, 4]
->>> 10 - 1 2 3
-Result: [9, 8, 7]
->>> 20 40 60 ÷ 2 4     
-Evaluation error at line 1 column 1: '', operands must be of the same size or one must be scalar.
->>> ⍟ 10 100 1000
-Result: [2, 4, 6]
->>> ⌈ 3 6 9 1
-Result: [9]
->>> ⌊ 5 10 29 1
-Result: [1]
+5 7 9
+>>> - 1 2 3
+¯1 ¯2 ¯3
+>>> 1 2 3 * 2 4 6
+1 16 729
+>>> 10 ⍟ 100
+2
+>>> ⍳ 5
+1 2 3 4 5
+>>> +/ ⍳ 10
+55
+>>> 2 3 ⍴ ⍳ 6
+1 2 3 4 5 6
+>>> ⍴ 2 3 ⍴ ⍳ 6
+2 3
+>>> ⌽ 1 2 3 4 5
+5 4 3 2 1
+>>> 1 2 3 = 1 3 3
+1 0 1
+>>> 5 ⍴ 1 2
+1 2 1 2 1
 ```
 
 ## Affiliation
