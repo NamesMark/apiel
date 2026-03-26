@@ -1,6 +1,6 @@
 [package]
 name = "apiel-cli"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Mark Firman <markfirmanwork@gmail.com>"]
 edition = "2024"
 homepage = "https://github.com/NamesMark/apiel"
