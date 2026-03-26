@@ -210,6 +210,13 @@ fn reference_tests() {
         // Dfns (dyadic)
         ("2 {⍺+⍵} 3",                  &[5.0],                                 "dfn dyadic add"),
         ("10 {⍺×⍵} 1 2 3",             &[10.0, 20.0, 30.0],                   "dfn dyadic mul vector"),
+        // Expand (\ dyadic)
+        ("1 0 1 0 1 \\ 1 2 3",          &[1.0, 0.0, 2.0, 0.0, 3.0],          "expand with zeros"),
+        ("1 1 0 1 \\ 1 2 3",            &[1.0, 2.0, 0.0, 3.0],               "expand insert zero"),
+        // Circular functions (dyadic ○)
+        ("1 ○ 0",                        &[0.0],                                "sin 0"),
+        ("2 ○ 0",                        &[1.0],                                "cos 0"),
+        ("3 ○ 1",                        &[1.5574077246549023],                 "tan 1"),
     ];
 
     let mut failures = Vec::new();

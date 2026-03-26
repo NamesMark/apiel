@@ -457,6 +457,58 @@ pub fn eval(
                 Ok(Val::vector(data))
             }
         }
+        Expr::Expand { span, lhs, rhs } => {
+            debug!("Dyadic Expand");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            let mut data = Vec::new();
+            let mut rhs_iter = rhs_eval.data.iter();
+            for mask in &lhs_eval.data {
+                let n = match mask {
+                    Scalar::Integer(i) => *i,
+                    Scalar::Float(f) => *f as i64,
+                };
+                if n == 1 {
+                    match rhs_iter.next() {
+                        Some(&v) => data.push(v),
+                        None => return Err((span, "Expand: not enough data elements")),
+                    }
+                } else {
+                    data.push(Scalar::Integer(0));
+                }
+            }
+            Ok(Val::vector(data))
+        }
+        Expr::Circular { span, lhs, rhs } => {
+            debug!("Dyadic Circular");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            let circular_op = |func: &Scalar, val: &Scalar| {
+                let x = f64::from(*val);
+                let result = match func {
+                    Scalar::Integer(0) => (1.0 - x * x).sqrt(),
+                    Scalar::Integer(1) => x.sin(),
+                    Scalar::Integer(2) => x.cos(),
+                    Scalar::Integer(3) => x.tan(),
+                    Scalar::Integer(-1) => x.asin(),
+                    Scalar::Integer(-2) => x.acos(),
+                    Scalar::Integer(-3) => x.atan(),
+                    Scalar::Integer(4) => (1.0 + x * x).sqrt(),
+                    Scalar::Integer(5) => x.sinh(),
+                    Scalar::Integer(6) => x.cosh(),
+                    Scalar::Integer(7) => x.tanh(),
+                    Scalar::Integer(-5) => x.asinh(),
+                    Scalar::Integer(-6) => x.acosh(),
+                    Scalar::Integer(-7) => x.atanh(),
+                    _ => return Err(eyre::eyre!("Unknown circular function")),
+                };
+                Ok(Scalar::Float(result))
+            };
+
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, circular_op)
+        }
         Expr::Take { span, lhs, rhs } => {
             debug!("Dyadic Take");
             let lhs_eval = eval(lexer, *lhs, env)?;
