@@ -70,6 +70,7 @@ pub fn format_val(val: &Val) -> String {
             Scalar::Float(f) if f.fract() == 0.0 => format!("{}", *f as i64),
             Scalar::Float(f) => format!("{f}"),
             Scalar::Char(c) => format!("{c}"),
+            Scalar::Nested(v) => format!("({})", format_val(v)),
         }).collect::<Vec<_>>().join(" ")
     }
 }

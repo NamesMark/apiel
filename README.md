@@ -77,6 +77,9 @@ List of supported glyphs and operations:
 | ⊥ | - | - | Decode | ✅
 | ⊤ | - | - | Encode | ✅
 | ⌷ | - | - | Index | ✅
+| ⊂ | Enclose | ✅ | - | -
+| ⊃ | First / Disclose | ✅ | - | -
+| ⊆ | - | - | Partition | ✅
 | '' | String literals | ✅ | - | -
 
 - \* - Not implemented for complex numbers

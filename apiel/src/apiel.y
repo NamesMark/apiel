@@ -134,6 +134,9 @@ Term -> Result<Expr, ()>:
     | Factor 'TILDE' Term {
         Ok(Expr::Without{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'PARTITION' Term {
+        Ok(Expr::Partition{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor 'INDEX' Term {
         Ok(Expr::Index{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
@@ -228,6 +231,9 @@ MonadicFactor -> Result<Expr, ()>:
       }
     | 'SELF' Term {
         Ok(Expr::SelfCall{ span: $span, arg: Box::new($2?) })
+      }
+    | 'ENCLOSE' Term {
+        Ok(Expr::Enclose{ span: $span, arg: Box::new($2?) })
       }
     | 'FIRST' Term {
         Ok(Expr::First{ span: $span, arg: Box::new($2?) })
@@ -591,9 +597,18 @@ pub enum Expr {
         g: Operator,
         rhs: Box<Expr>,
     },
+    Enclose {
+        span: Span,
+        arg: Box<Expr>,
+    },
     First {
         span: Span,
         arg: Box<Expr>,
+    },
+    Partition {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
     },
     Unique {
         span: Span,
