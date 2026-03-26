@@ -396,4 +396,15 @@ fn nested_arrays() {
     let val = eval_to_val("1 1 0 1 1 ⊆ 10 20 30 40 50", &mut env).unwrap();
     assert_eq!(format_val(&val), "(10 20) (40 50)");
     assert_eq!(val.data.len(), 2); // two groups
+
+    // Each
+    assert_apl("+/¨ (⊂ 1 2 3) , (⊂ 4 5) , (⊂ 6)", &[6.0, 9.0, 6.0], "reduce each");
+    assert_apl("1 +¨ 1 2 3", &[2.0, 3.0, 4.0], "dyadic each");
+
+    let val = eval_to_val("⍳¨ 3 4 5", &mut env).unwrap();
+    assert_eq!(val.data.len(), 3);
+    assert_eq!(format_val(&val), "(1 2 3) (1 2 3 4) (1 2 3 4 5)");
+
+    let val = eval_to_val("⌽¨ (⊂ 1 2 3) , (⊂ 4 5) , (⊂ 6)", &mut env).unwrap();
+    assert_eq!(format_val(&val), "(3 2 1) (5 4) (6)");
 }

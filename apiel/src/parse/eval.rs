@@ -1084,6 +1084,93 @@ pub fn eval(
             }
             Ok(Val::vector(groups))
         }
+        Expr::MonadicEach { span, func, arg } => {
+            debug!("Monadic Each: {func}");
+            let arg_eval = eval(lexer, *arg, env)?;
+
+            let apply_to_val = |v: &Val| -> Result<Val, (Span, &'static str)> {
+                match func.as_str() {
+                    "shape" => {
+                        let data: Vec<Scalar> = v.shape.iter().map(|&s| Scalar::Integer(s as i64)).collect();
+                        Ok(Val::vector(data))
+                    }
+                    "reverse" => {
+                        let mut data = v.data.clone();
+                        data.reverse();
+                        Ok(Val::new(v.shape.clone(), data))
+                    }
+                    "iota" => {
+                        if let Some(Scalar::Integer(n)) = v.data.first() {
+                            let data: Vec<Scalar> = (1..=*n).map(Scalar::Integer).collect();
+                            Ok(Val::vector(data))
+                        } else {
+                            Err((span, "Iota each: elements must be integers"))
+                        }
+                    }
+                    _ => Err((span, "Unknown each function")),
+                }
+            };
+
+            let data: Vec<Scalar> = arg_eval.data.iter()
+                .map(|elem| match elem {
+                    Scalar::Nested(v) => apply_to_val(v).map(|r| Scalar::Nested(Box::new(r))),
+                    Scalar::Integer(n) => apply_to_val(&Val::scalar(Scalar::Integer(*n)))
+                        .map(|r| Scalar::Nested(Box::new(r))),
+                    _ => Err((span, "Each: unsupported element type")),
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Val::vector(data))
+        }
+        Expr::ReduceEach { span, operator, term } => {
+            debug!("Reduce Each");
+            let term_eval = eval(lexer, *term, env)?;
+            let op_fn = get_operator_fn(operator);
+
+            let data: Vec<Scalar> = term_eval.data.iter()
+                .map(|elem| {
+                    let inner = match elem {
+                        Scalar::Nested(v) => &v.data,
+                        _ => return Err((span, "Reduce each: elements must be nested")),
+                    };
+                    inner.iter().rev().cloned().try_fold(None::<Scalar>, |acc, n| {
+                        match acc {
+                            None => Some(Some(n)),
+                            Some(right) => op_fn(&n, &right).map(Some),
+                        }
+                    }).flatten()
+                        .ok_or((span, "Reduce each: operation failed"))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Val::vector(data))
+        }
+        Expr::DyadicEach { span, lhs, operator, rhs } => {
+            debug!("Dyadic Each");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let op_fn = get_operator_fn(operator);
+
+            // Element-wise application
+            let apply = |a: &Scalar, b: &Scalar| -> Result<Scalar, (Span, &'static str)> {
+                op_fn(a, b).ok_or((span, "Dyadic each: operation failed"))
+            };
+
+            if lhs_eval.is_scalar() {
+                let data: Vec<Scalar> = rhs_eval.data.iter()
+                    .map(|r| apply(&lhs_eval.data[0], r))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Val::new(rhs_eval.shape, data))
+            } else if rhs_eval.is_scalar() {
+                let data: Vec<Scalar> = lhs_eval.data.iter()
+                    .map(|l| apply(l, &rhs_eval.data[0]))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Val::new(lhs_eval.shape, data))
+            } else {
+                let data: Vec<Scalar> = lhs_eval.data.iter().zip(rhs_eval.data.iter())
+                    .map(|(l, r)| apply(l, r))
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(Val::new(lhs_eval.shape, data))
+            }
+        }
         Expr::Unique { arg, .. } => {
             debug!("Monadic Unique");
             let arg_eval = eval(lexer, *arg, env)?;
