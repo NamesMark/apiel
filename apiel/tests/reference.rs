@@ -372,6 +372,13 @@ fn matrix_inverse() {
     let val = eval_to_val("⌹ 1 1 ⍴ 4", &mut env).unwrap();
     let v: f64 = val.data[0].clone().into();
     assert!((v - 0.25).abs() < 1e-9, "1x1 inverse: got {v}");
+
+    // Matrix divide: solve Ax = B
+    assert_apl_env("4 ⌹ 1 1 ⍴ 2", &mut env, &[2.0], "matdiv scalar");
+
+    let result = apl!("6 10 ⌹ 2 2 ⍴ 1 2 3 4").unwrap();
+    assert!((result[0] - -2.0).abs() < 1e-9, "matdiv vec [0]");
+    assert!((result[1] - 4.0).abs() < 1e-9, "matdiv vec [1]");
 }
 
 #[test]

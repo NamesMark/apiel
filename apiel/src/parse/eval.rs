@@ -1365,9 +1365,72 @@ pub fn eval(
         }
         Expr::MatrixDivide { span, lhs, rhs } => {
             debug!("Matrix Divide");
-            // B ⌹ A = (⌹A) +.× B  (simplified: solve Ax = B)
-            let _ = (span, lhs, rhs);
-            Err((span, "Matrix divide not yet implemented"))
+            // B ⌹ A means solve Ax = B, i.e. x = A⁻¹ B
+            let b_eval = eval(lexer, *lhs, env)?;
+            let a_eval = eval(lexer, *rhs, env)?;
+
+            if a_eval.shape.len() != 2 {
+                return Err((span, "Matrix divide: right argument must be a matrix"));
+            }
+            let n = a_eval.shape[0];
+            if n != a_eval.shape[1] {
+                return Err((span, "Matrix divide: right argument must be square"));
+            }
+
+            // Build augmented matrix [A | B]
+            let b_cols = if b_eval.shape.len() == 2 { b_eval.shape[1] } else if b_eval.shape.len() <= 1 { 1 } else {
+                return Err((span, "Matrix divide: left argument must be vector or matrix"));
+            };
+            let b_data: Vec<f64> = b_eval.data.iter().map(|s| f64::from(s.clone())).collect();
+            let mut aug: Vec<f64> = vec![0.0; n * (n + b_cols)];
+            for i in 0..n {
+                for j in 0..n {
+                    aug[i * (n + b_cols) + j] = f64::from(a_eval.data[i * n + j].clone());
+                }
+                for j in 0..b_cols {
+                    let b_idx = if b_eval.shape.len() == 2 { i * b_cols + j } else { i };
+                    if b_idx < b_data.len() {
+                        aug[i * (n + b_cols) + n + j] = b_data[b_idx];
+                    }
+                }
+            }
+
+            // Gauss-Jordan elimination
+            let w = n + b_cols;
+            for col in 0..n {
+                let pivot_row = (col..n).max_by(|&a, &b|
+                    aug[a * w + col].abs().partial_cmp(&aug[b * w + col].abs()).unwrap()
+                ).unwrap();
+                if aug[pivot_row * w + col].abs() < 1e-12 {
+                    return Err((span, "Matrix divide: singular matrix"));
+                }
+                for j in 0..w {
+                    let tmp = aug[col * w + j];
+                    aug[col * w + j] = aug[pivot_row * w + j];
+                    aug[pivot_row * w + j] = tmp;
+                }
+                let pivot = aug[col * w + col];
+                for j in 0..w { aug[col * w + j] /= pivot; }
+                for i in 0..n {
+                    if i != col {
+                        let factor = aug[i * w + col];
+                        for j in 0..w { aug[i * w + j] -= factor * aug[col * w + j]; }
+                    }
+                }
+            }
+
+            // Extract solution
+            let mut data = Vec::with_capacity(n * b_cols);
+            for i in 0..n {
+                for j in 0..b_cols {
+                    data.push(Scalar::Float(aug[i * w + n + j]));
+                }
+            }
+            if b_cols == 1 {
+                Ok(Val::vector(data))
+            } else {
+                Ok(Val::new(vec![n, b_cols], data))
+            }
         }
         Expr::StringLiteral { span } => {
             debug!("String Literal");
