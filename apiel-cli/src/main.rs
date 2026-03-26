@@ -1,5 +1,3 @@
-#![allow(clippy::unnecessary_wraps)]
-
 use std::io::{self, BufRead, Write};
 
 use apiel::apl;
