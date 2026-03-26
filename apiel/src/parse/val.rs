@@ -3,31 +3,31 @@ use eyre::Result;
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 
 #[derive(Debug, Clone, Copy, PartialOrd)]
-pub enum Val {
+pub enum Scalar {
     Float(f64),
     Integer(i64),
 }
 
-impl Val {
-    fn promote_pair(a: &Val, b: &Val) -> (Val, Val) {
+impl Scalar {
+    fn promote_pair(a: &Scalar, b: &Scalar) -> (Scalar, Scalar) {
         match (a, b) {
-            (Val::Integer(i), Val::Integer(j)) => (Val::Integer(*i), Val::Integer(*j)),
-            (Val::Float(f), Val::Float(g)) => (Val::Float(*f), Val::Float(*g)),
-            (Val::Integer(i), Val::Float(f)) => (Val::Float(*i as f64), Val::Float(*f)),
-            (Val::Float(f), Val::Integer(i)) => (Val::Float(*f), Val::Float(*i as f64)),
+            (Scalar::Integer(i), Scalar::Integer(j)) => (Scalar::Integer(*i), Scalar::Integer(*j)),
+            (Scalar::Float(f), Scalar::Float(g)) => (Scalar::Float(*f), Scalar::Float(*g)),
+            (Scalar::Integer(i), Scalar::Float(f)) => (Scalar::Float(*i as f64), Scalar::Float(*f)),
+            (Scalar::Float(f), Scalar::Integer(i)) => (Scalar::Float(*f), Scalar::Float(*i as f64)),
         }
     }
 }
 
-impl TryFrom<Val> for usize {
+impl TryFrom<Scalar> for usize {
     type Error = &'static str;
 
-    fn try_from(value: Val) -> Result<Self, Self::Error> {
+    fn try_from(value: Scalar) -> Result<Self, Self::Error> {
         match value {
-            Val::Integer(val) => val
+            Scalar::Integer(val) => val
                 .try_into()
                 .map_err(|_| "Failed to convert i64 into usize"),
-            Val::Float(val) => {
+            Scalar::Float(val) => {
                 if val.fract() == 0.0 && val >= 0.0 {
                     val.approx_as::<usize>()
                         .map_err(|_| "Failed to convert f64 into usize")
@@ -39,33 +39,33 @@ impl TryFrom<Val> for usize {
     }
 }
 
-impl From<Val> for f64 {
-    fn from(value: Val) -> Self {
+impl From<Scalar> for f64 {
+    fn from(value: Scalar) -> Self {
         match value {
-            Val::Integer(val) => val as f64,
-            Val::Float(val) => val,
+            Scalar::Integer(val) => val as f64,
+            Scalar::Float(val) => val,
         }
     }
 }
 
-impl PartialEq for Val {
-    fn eq(&self, other: &Val) -> bool {
+impl PartialEq for Scalar {
+    fn eq(&self, other: &Scalar) -> bool {
         match (self, other) {
-            (Val::Integer(i), Val::Integer(j)) => i == j,
-            (Val::Float(f), Val::Float(g)) => f == g,
-            (Val::Integer(i), Val::Float(f)) => *i as f64 == *f,
-            (Val::Float(f), Val::Integer(i)) => *f == *i as f64,
+            (Scalar::Integer(i), Scalar::Integer(j)) => i == j,
+            (Scalar::Float(f), Scalar::Float(g)) => f == g,
+            (Scalar::Integer(i), Scalar::Float(f)) => *i as f64 == *f,
+            (Scalar::Float(f), Scalar::Integer(i)) => *f == *i as f64,
         }
     }
 }
 
-impl Eq for Val {}
+impl Eq for Scalar {}
 
-impl Ord for Val {
+impl Ord for Scalar {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
-            (Val::Integer(i), Val::Integer(j)) => i.cmp(j),
-            (Val::Float(f), Val::Float(g)) => {
+            (Scalar::Integer(i), Scalar::Integer(j)) => i.cmp(j),
+            (Scalar::Float(f), Scalar::Float(g)) => {
                 if f.is_nan() && g.is_nan() {
                     std::cmp::Ordering::Equal
                 } else if f.is_nan() {
@@ -76,14 +76,14 @@ impl Ord for Val {
                     f.partial_cmp(g).unwrap()
                 }
             }
-            (Val::Integer(i), Val::Float(f)) => (*i as f64).partial_cmp(f).unwrap_or_else(|| {
+            (Scalar::Integer(i), Scalar::Float(f)) => (*i as f64).partial_cmp(f).unwrap_or_else(|| {
                 if f.is_nan() {
                     std::cmp::Ordering::Greater
                 } else {
                     (*i as f64).partial_cmp(f).unwrap()
                 }
             }),
-            (Val::Float(f), Val::Integer(i)) => f.partial_cmp(&(*i as f64)).unwrap_or_else(|| {
+            (Scalar::Float(f), Scalar::Integer(i)) => f.partial_cmp(&(*i as f64)).unwrap_or_else(|| {
                 if f.is_nan() {
                     std::cmp::Ordering::Less
                 } else {
@@ -94,105 +94,101 @@ impl Ord for Val {
     }
 }
 
-impl std::ops::Add for Val {
+impl std::ops::Add for Scalar {
     type Output = Self;
 
     fn add(self, other: Self) -> Self::Output {
         let promoted = Self::promote_pair(&self, &other);
 
         match promoted {
-            (Val::Integer(i), Val::Integer(j)) => Val::Integer(i + j),
-            (Val::Float(f), Val::Float(g)) => Val::Float(f + g),
-            // Panic here because can't return Result:
+            (Scalar::Integer(i), Scalar::Integer(j)) => Scalar::Integer(i + j),
+            (Scalar::Float(f), Scalar::Float(g)) => Scalar::Float(f + g),
             _ => panic!("BUG: Unexpected type mismatch after promotion"),
         }
     }
 }
 
-impl CheckedAdd for Val {
+impl CheckedAdd for Scalar {
     fn checked_add(&self, other: &Self) -> Option<Self> {
         let promoted_result = Self::promote_pair(self, other);
         match promoted_result {
-            (Val::Integer(i), Val::Integer(j)) => i.checked_add(j).map(Val::Integer),
-            (Val::Float(f), Val::Float(g)) => Some(Val::Float(f + g)),
+            (Scalar::Integer(i), Scalar::Integer(j)) => i.checked_add(j).map(Scalar::Integer),
+            (Scalar::Float(f), Scalar::Float(g)) => Some(Scalar::Float(f + g)),
             _ => None,
         }
     }
 }
 
-impl std::ops::Sub for Val {
+impl std::ops::Sub for Scalar {
     type Output = Self;
 
     fn sub(self, other: Self) -> Self::Output {
         let promoted = Self::promote_pair(&self, &other);
 
         match promoted {
-            (Val::Integer(i), Val::Integer(j)) => Val::Integer(i - j),
-            (Val::Float(f), Val::Float(g)) => Val::Float(f - g),
-            // Panic here because can't return Result:
+            (Scalar::Integer(i), Scalar::Integer(j)) => Scalar::Integer(i - j),
+            (Scalar::Float(f), Scalar::Float(g)) => Scalar::Float(f - g),
             _ => panic!("BUG: Unexpected type mismatch after promotion"),
         }
     }
 }
 
-impl CheckedSub for Val {
+impl CheckedSub for Scalar {
     fn checked_sub(&self, other: &Self) -> Option<Self> {
         let promoted_result = Self::promote_pair(self, other);
         match promoted_result {
-            (Val::Integer(i), Val::Integer(j)) => i.checked_sub(j).map(Val::Integer),
-            (Val::Float(f), Val::Float(g)) => Some(Val::Float(f - g)),
+            (Scalar::Integer(i), Scalar::Integer(j)) => i.checked_sub(j).map(Scalar::Integer),
+            (Scalar::Float(f), Scalar::Float(g)) => Some(Scalar::Float(f - g)),
             _ => None,
         }
     }
 }
 
-impl std::ops::Mul for Val {
+impl std::ops::Mul for Scalar {
     type Output = Self;
 
     fn mul(self, other: Self) -> Self::Output {
         let promoted = Self::promote_pair(&self, &other);
 
         match promoted {
-            (Val::Integer(i), Val::Integer(j)) => Val::Integer(i * j),
-            (Val::Float(f), Val::Float(g)) => Val::Float(f * g),
-            // Panic here because can't return Result:
+            (Scalar::Integer(i), Scalar::Integer(j)) => Scalar::Integer(i * j),
+            (Scalar::Float(f), Scalar::Float(g)) => Scalar::Float(f * g),
             _ => panic!("BUG: Unexpected type mismatch after promotion"),
         }
     }
 }
 
-impl CheckedMul for Val {
+impl CheckedMul for Scalar {
     fn checked_mul(&self, other: &Self) -> Option<Self> {
         let promoted_result = Self::promote_pair(self, other);
         match promoted_result {
-            (Val::Integer(i), Val::Integer(j)) => i.checked_mul(j).map(Val::Integer),
-            (Val::Float(f), Val::Float(g)) => Some(Val::Float(f * g)),
+            (Scalar::Integer(i), Scalar::Integer(j)) => i.checked_mul(j).map(Scalar::Integer),
+            (Scalar::Float(f), Scalar::Float(g)) => Some(Scalar::Float(f * g)),
             _ => None,
         }
     }
 }
 
-impl std::ops::Div for Val {
+impl std::ops::Div for Scalar {
     type Output = Self;
 
     fn div(self, other: Self) -> Self::Output {
         let promoted = Self::promote_pair(&self, &other);
 
         match promoted {
-            (Val::Integer(i), Val::Integer(j)) => Val::Float(i as f64 / j as f64),
-            (Val::Float(f), Val::Float(g)) => Val::Float(f / g),
-            // Panic here because can't return Result:
+            (Scalar::Integer(i), Scalar::Integer(j)) => Scalar::Float(i as f64 / j as f64),
+            (Scalar::Float(f), Scalar::Float(g)) => Scalar::Float(f / g),
             _ => panic!("BUG: Unexpected type mismatch after promotion"),
         }
     }
 }
 
-impl CheckedDiv for Val {
+impl CheckedDiv for Scalar {
     fn checked_div(&self, other: &Self) -> Option<Self> {
         let promoted_result = Self::promote_pair(self, other);
         match promoted_result {
-            (Val::Integer(i), Val::Integer(j)) => Some(Val::Float(i as f64 / j as f64)),
-            (Val::Float(f), Val::Float(g)) => Some(Val::Float(f / g)),
+            (Scalar::Integer(i), Scalar::Integer(j)) => Some(Scalar::Float(i as f64 / j as f64)),
+            (Scalar::Float(f), Scalar::Float(g)) => Some(Scalar::Float(f / g)),
             _ => None,
         }
     }
@@ -203,18 +199,18 @@ pub trait CheckedPow: Sized {
     fn checked_powf(&self, other: f64) -> Option<Self>;
 }
 
-impl CheckedPow for Val {
+impl CheckedPow for Scalar {
     fn checked_pow(&self, other: usize) -> Option<Self> {
         match self {
-            Val::Integer(i) => i.checked_pow(other as u32).map(Val::Integer),
-            Val::Float(f) => Some(Val::Float(num_traits::pow::pow(*f, other))),
+            Scalar::Integer(i) => i.checked_pow(other as u32).map(Scalar::Integer),
+            Scalar::Float(f) => Some(Scalar::Float(num_traits::pow::pow(*f, other))),
         }
     }
 
     fn checked_powf(&self, other: f64) -> Option<Self> {
         match self {
-            Val::Integer(i) => Some(Val::Float((*i as f64).powf(other))),
-            Val::Float(f) => Some(Val::Float(f.powf(other))),
+            Scalar::Integer(i) => Some(Scalar::Float((*i as f64).powf(other))),
+            Scalar::Float(f) => Some(Scalar::Float(f.powf(other))),
         }
     }
 }
@@ -223,17 +219,42 @@ pub trait Log: Sized {
     fn log(&self, base: &Self) -> Option<Self>;
 }
 
-impl Log for Val {
+impl Log for Scalar {
     fn log(&self, base: &Self) -> Option<Self> {
-        Some(Val::Float(f64::from(*self).log(f64::from(*base))))
+        Some(Scalar::Float(f64::from(*self).log(f64::from(*base))))
     }
 }
 
-impl CheckedNeg for Val {
+impl CheckedNeg for Scalar {
     fn checked_neg(&self) -> Option<Self> {
         match self {
-            Val::Integer(i) => i.checked_neg().map(Val::Integer),
-            Val::Float(f) => Some(Val::Float(-f)),
+            Scalar::Integer(i) => i.checked_neg().map(Scalar::Integer),
+            Scalar::Float(f) => Some(Scalar::Float(-f)),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Val {
+    pub shape: Vec<usize>,
+    pub data: Vec<Scalar>,
+}
+
+impl Val {
+    pub fn scalar(s: Scalar) -> Self {
+        Val { shape: vec![], data: vec![s] }
+    }
+
+    pub fn vector(data: Vec<Scalar>) -> Self {
+        let len = data.len();
+        Val { shape: vec![len], data }
+    }
+
+    pub fn new(shape: Vec<usize>, data: Vec<Scalar>) -> Self {
+        Val { shape, data }
+    }
+
+    pub fn is_scalar(&self) -> bool {
+        self.shape.is_empty()
     }
 }
