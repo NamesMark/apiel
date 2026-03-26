@@ -269,6 +269,54 @@ pub fn eval(
 
             Ok(Val::new(rhs_eval.shape, data))
         }
+        Expr::Equal { span, lhs, rhs } => {
+            debug!("Dyadic Equal");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                Ok(Scalar::Integer(if a == b { 1 } else { 0 }))
+            })
+        }
+        Expr::NotEqual { span, lhs, rhs } => {
+            debug!("Dyadic Not Equal");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                Ok(Scalar::Integer(if a != b { 1 } else { 0 }))
+            })
+        }
+        Expr::LessThan { span, lhs, rhs } => {
+            debug!("Dyadic Less Than");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                Ok(Scalar::Integer(if a < b { 1 } else { 0 }))
+            })
+        }
+        Expr::GreaterThan { span, lhs, rhs } => {
+            debug!("Dyadic Greater Than");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                Ok(Scalar::Integer(if a > b { 1 } else { 0 }))
+            })
+        }
+        Expr::LessEqual { span, lhs, rhs } => {
+            debug!("Dyadic Less Equal");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                Ok(Scalar::Integer(if a <= b { 1 } else { 0 }))
+            })
+        }
+        Expr::GreaterEqual { span, lhs, rhs } => {
+            debug!("Dyadic Greater Equal");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                Ok(Scalar::Integer(if a >= b { 1 } else { 0 }))
+            })
+        }
         Expr::Conjugate { span, arg } => {
             debug!("Monadic Conjugate");
             let _ = span;

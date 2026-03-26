@@ -112,6 +112,23 @@ fn reference_tests() {
         ("2 × ¯3",                      &[-6.0],                                "high minus rhs"),
         ("¯3.14",                       &[-3.14],                               "high minus float"),
         ("- ¯5",                        &[5.0],                                 "negate high minus"),
+        // Comparison operators
+        ("3 = 3",                       &[1.0],                                 "equal true"),
+        ("3 = 4",                       &[0.0],                                 "equal false"),
+        ("1 2 3 = 1 3 3",              &[1.0, 0.0, 1.0],                      "equal vector"),
+        ("3 ≠ 4",                       &[1.0],                                 "not equal true"),
+        ("3 ≠ 3",                       &[0.0],                                 "not equal false"),
+        ("3 < 4",                       &[1.0],                                 "less than true"),
+        ("4 < 3",                       &[0.0],                                 "less than false"),
+        ("3 > 4",                       &[0.0],                                 "greater than false"),
+        ("4 > 3",                       &[1.0],                                 "greater than true"),
+        ("3 ≤ 4",                       &[1.0],                                 "leq less"),
+        ("4 ≤ 4",                       &[1.0],                                 "leq equal"),
+        ("5 ≤ 4",                       &[0.0],                                 "leq greater"),
+        ("3 ≥ 4",                       &[0.0],                                 "geq less"),
+        ("4 ≥ 4",                       &[1.0],                                 "geq equal"),
+        ("5 ≥ 4",                       &[1.0],                                 "geq greater"),
+        ("1 2 3 < 2 2 2",              &[1.0, 0.0, 0.0],                      "less than vector"),
     ];
 
     let mut failures = Vec::new();

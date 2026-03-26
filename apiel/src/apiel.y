@@ -46,6 +46,24 @@ Term -> Result<Expr, ()>:
     | Factor 'IOTA_U' Term {
         Ok(Expr::IntervalIndex{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'EQ' Term {
+        Ok(Expr::Equal{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'NEQ' Term {
+        Ok(Expr::NotEqual{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'LT' Term {
+        Ok(Expr::LessThan{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'GT' Term {
+        Ok(Expr::GreaterThan{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'LTE' Term {
+        Ok(Expr::LessEqual{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'GTE' Term {
+        Ok(Expr::GreaterEqual{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | MonadicFactor {
         Ok($1?)
       }
@@ -229,6 +247,36 @@ pub enum Expr {
         rhs: Box<Expr>,
     },
     IntervalIndex {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Equal {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    NotEqual {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    LessThan {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    GreaterThan {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    LessEqual {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    GreaterEqual {
         span: Span,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
