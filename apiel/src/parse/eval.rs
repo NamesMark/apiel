@@ -360,7 +360,7 @@ pub fn eval(
                 let mut rng = rand::thread_rng();
 
                 match limit {
-                    Val::Integer(val) if *val == 0 => Ok(Val::Integer(rng.gen())),
+                    Val::Integer(val) if *val == 0 => Ok(Val::Integer(rng.r#gen())),
                     Val::Integer(val) => Ok(Val::Integer(rng.gen_range(0..=*val))),
                     Val::Float(_) => {
                         eyre::bail!("Roll right argument must consist of non-negative integer(s)")
