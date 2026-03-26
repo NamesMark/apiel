@@ -287,6 +287,38 @@ pub fn eval(
 
             Ok(Val::new(new_shape, data))
         }
+        Expr::Catenate { span, lhs, rhs } => {
+            debug!("Dyadic Catenate");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            let _ = span;
+
+            let mut data = lhs_eval.data;
+            data.extend(rhs_eval.data);
+            Ok(Val::vector(data))
+        }
+        Expr::Rotate { span, lhs, rhs } => {
+            debug!("Dyadic Rotate");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+
+            if !lhs_eval.is_scalar() {
+                return Err((span, "Rotate left argument must be a scalar integer"));
+            }
+            let n = match lhs_eval.data[0] {
+                Scalar::Integer(i) => i,
+                _ => return Err((span, "Rotate left argument must be an integer")),
+            };
+
+            let len = rhs_eval.data.len();
+            if len == 0 {
+                return Ok(rhs_eval);
+            }
+            let rot = ((n % len as i64) + len as i64) as usize % len;
+            let mut data = rhs_eval.data;
+            data.rotate_left(rot);
+            Ok(Val::new(rhs_eval.shape, data))
+        }
         Expr::Equal { span, lhs, rhs } => {
             debug!("Dyadic Equal");
             let lhs_eval = eval(lexer, *lhs)?;
@@ -551,6 +583,37 @@ pub fn eval(
                 .map(|&s| Scalar::Integer(s as i64))
                 .collect();
             Ok(Val::vector(data))
+        }
+        Expr::Ravel { arg, .. } => {
+            debug!("Monadic Ravel");
+            let arg_eval = eval(lexer, *arg)?;
+            Ok(Val::vector(arg_eval.data))
+        }
+        Expr::Reverse { arg, .. } => {
+            debug!("Monadic Reverse");
+            let arg_eval = eval(lexer, *arg)?;
+            let mut data = arg_eval.data;
+            data.reverse();
+            Ok(Val::new(arg_eval.shape, data))
+        }
+        Expr::Transpose { arg, .. } => {
+            debug!("Monadic Transpose");
+            let arg_eval = eval(lexer, *arg)?;
+            match arg_eval.shape.len() {
+                0 | 1 => Ok(arg_eval),
+                2 => {
+                    let rows = arg_eval.shape[0];
+                    let cols = arg_eval.shape[1];
+                    let mut data = vec![Scalar::Integer(0); rows * cols];
+                    for r in 0..rows {
+                        for c in 0..cols {
+                            data[c * rows + r] = arg_eval.data[r * cols + c];
+                        }
+                    }
+                    Ok(Val::new(vec![cols, rows], data))
+                }
+                _ => Err((Span::new(0, 0), "Transpose only supports rank 0, 1, or 2")),
+            }
         }
         Expr::Reduce {
             span,

@@ -23,6 +23,8 @@
 \\ "\"
 \, ","
 \⍴ "RHO"
+\⌽ "ROTATE"
+\⍉ "TRANSPOSE"
 \= "EQ"
 \≠ "NEQ"
 \< "LT"
