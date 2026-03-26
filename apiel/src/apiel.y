@@ -414,6 +414,16 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
+    Expand {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Circular {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
     Take {
         span: Span,
         lhs: Box<Expr>,

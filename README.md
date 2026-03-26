@@ -32,7 +32,7 @@ List of supported glyphs and operations:
 | * | Exponentiation | ✅ | Raising to power | ✅
 | ⍟ | Natural logarithm | ✅ | Logarithm | ✅
 | ⌹ | Matrix inverse | - | Matrix divide | -
-| ○ | Pi Multiple | ✅ | Circular functions | -
+| ○ | Pi Multiple | ✅ | Circular functions | ✅
 | ! | Factorial | ✅ | Binomial | ✅
 | ? | Roll | ✅ | Deal | ✅
 | \| | Magnitude | ✅ | Residue | ✅
@@ -42,7 +42,8 @@ List of supported glyphs and operations:
 | ⍸ | Where | ✅ | Interval index | ✅
 | / | - | - | Replicate | ✅
 | / | - | - | Reduce | ✅
-| \ | Expand | - | Scan | ✅
+| \ | - | - | Expand | ✅
+| \ | - | - | Scan | ✅
 | , | Ravel | ✅ | Catenate | ✅
 | ⍴ | Shape | ✅ | Reshape | ✅
 | ⌽ | Reverse | ✅ | Rotate | ✅
@@ -64,7 +65,9 @@ List of supported glyphs and operations:
 | ¯ | High minus (negative literal) | ✅ | - | -
 | ∘. | - | - | Outer Product | ✅
 | . | - | - | Inner Product | -
-| ← | - | - | Assignment | -
+| ← | - | - | Assignment | ✅
+| {⍵} | - | - | Dfns (lambdas) | ✅
+| ⍵ ⍺ | Right/Left arg | ✅ | - | -
 
 - \* - Not implemented for complex numbers
 
