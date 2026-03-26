@@ -69,6 +69,32 @@ fn dyalog_reference_battery() {
         ("- 3 + 4",                     &[-7.0],                                "chain negate add"),
         ("+/ ⍳ 10",                     &[55.0],                                "chain reduce iota"),
         ("2 * ⍳ 5",                     &[2.0, 4.0, 8.0, 16.0, 32.0],         "chain power iota"),
+        // Recursion / deep nesting
+        ("- - 3",                       &[3.0],                                 "double negate"),
+        ("- - - 3",                     &[-3.0],                                "triple negate"),
+        ("| - 5",                       &[5.0],                                 "magnitude of negate"),
+        ("- | - 5",                     &[-5.0],                                "negate magnitude negate"),
+        // Right-to-left (no operator precedence)
+        ("2 × 3 + 4",                   &[14.0],                                "rtl: mul before add"),
+        ("2 + 3 × 4",                   &[14.0],                                "rtl: add before mul"),
+        ("1 + 2 × 3 + 4",              &[15.0],                                "rtl: three ops"),
+        ("10 - 3 - 2",                  &[9.0],                                 "rtl: chained sub"),
+        // Parenthesized nesting
+        ("(2 + 3) × (4 + 5)",           &[45.0],                                "parens: two groups"),
+        ("(1 + 2) × (3 + (4 × 5))",     &[69.0],                                "parens: nested"),
+        // Monadic inside dyadic
+        ("2 × - 3",                     &[-6.0],                                "dyadic with monadic rhs"),
+        ("1 + - 2 + 3",                 &[-4.0],                                "monadic negate chains into add"),
+        // Monadic chains with vectors
+        ("- - 1 2 3",                   &[1.0, 2.0, 3.0],                      "double negate vector"),
+        ("| - 1 2 3",                   &[1.0, 2.0, 3.0],                      "magnitude negate vector"),
+        // Complex compositions
+        ("2 × ⍳ 3 + 2",                &[2.0, 4.0, 6.0, 8.0, 10.0],          "dyadic into monadic into dyadic"),
+        ("+/ 2 × ⍳ 5",                  &[30.0],                                "reduce of dyadic of iota"),
+        ("⍳ ⌈/ 3 1 5 2",               &[1.0, 2.0, 3.0, 4.0, 5.0],           "iota of max-reduce"),
+        ("1 + +/ 1 2 3",                &[7.0],                                 "scalar plus reduce"),
+        ("-/ ⍳ 6",                       &[-3.0],                                "reduce-sub of iota"),
+        ("! +/ 1 2",                     &[6.0],                                 "factorial of reduce"),
     ];
 
     let mut failures = Vec::new();
