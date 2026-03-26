@@ -371,7 +371,7 @@ pub fn eval(
             apply_monadic_operation(span, &arg_eval, roll_operation)
         }
         Expr::Magnitude { span, arg } => {
-            debug!("Monadic Roll");
+            debug!("Monadic Magnitude");
             let arg_eval = eval(lexer, *arg)?;
 
             let magnitude_operation = |value: &Val| match value {
