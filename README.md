@@ -40,8 +40,9 @@ List of supported glyphs and operations:
 | ⌊ | Floor | ✅ | Minimum | ✅
 | ⍳ | Generate index | ✅ | Index of | ✅
 | ⍸ | Where | ✅ | Interval index | ✅
-| / | Replicate | - | Reduce | ✅
-| \ | Expand | - | Scan | -
+| / | - | - | Replicate | ✅
+| / | - | - | Reduce | ✅
+| \ | Expand | - | Scan | ✅
 | , | Ravel | ✅ | Catenate | ✅
 | ⍴ | Shape | ✅ | Reshape | ✅
 | ⌽ | Reverse | ✅ | Rotate | ✅
@@ -52,9 +53,17 @@ List of supported glyphs and operations:
 | > | - | - | Greater Than | ✅
 | ≤ | - | - | Less or Equal | ✅
 | ≥ | - | - | Greater or Equal | ✅
+| ∧ | - | - | And | ✅
+| ∨ | - | - | Or | ✅
+| ⍲ | - | - | Nand | ✅
+| ⍱ | - | - | Nor | ✅
+| ↑ | - | - | Take | ✅
+| ↓ | - | - | Drop | ✅
+| ⍋ | Grade Up | ✅ | - | -
+| ⍒ | Grade Down | ✅ | - | -
 | ¯ | High minus (negative literal) | ✅ | - | -
-| . | - | - | Product | -
-| ∘. | - | - | Outer Product | -
+| ∘. | - | - | Outer Product | ✅
+| . | - | - | Inner Product | -
 | ← | - | - | Assignment | -
 
 - \* - Not implemented for complex numbers

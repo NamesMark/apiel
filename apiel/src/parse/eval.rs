@@ -57,6 +57,20 @@ where
     Ok(Val::new(arg.shape.clone(), data))
 }
 
+fn get_operator_fn(op: Operator) -> fn(&Scalar, &Scalar) -> Option<Scalar> {
+    match op {
+        Operator::Add => |a, b| a.checked_add(b),
+        Operator::Subtract => |a, b| a.checked_sub(b),
+        Operator::Multiply => |a, b| a.checked_mul(b),
+        Operator::Divide => |a, b| a.checked_div(b),
+        Operator::Equal => |a, b| Some(Scalar::Integer(if a == b { 1 } else { 0 })),
+        Operator::LessThan => |a, b| Some(Scalar::Integer(if a < b { 1 } else { 0 })),
+        Operator::GreaterThan => |a, b| Some(Scalar::Integer(if a > b { 1 } else { 0 })),
+        Operator::Max => |a, b| Some(if a >= b { *a } else { *b }),
+        Operator::Min => |a, b| Some(if a <= b { *a } else { *b }),
+    }
+}
+
 pub fn eval(
     lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
     e: Expr,
@@ -367,6 +381,152 @@ pub fn eval(
                 Ok(Scalar::Integer(if a >= b { 1 } else { 0 }))
             })
         }
+        Expr::And { span, lhs, rhs } => {
+            debug!("Dyadic And");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
+                let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
+                Ok(Scalar::Integer(a & b))
+            })
+        }
+        Expr::Or { span, lhs, rhs } => {
+            debug!("Dyadic Or");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
+                let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
+                Ok(Scalar::Integer(a | b))
+            })
+        }
+        Expr::Nand { span, lhs, rhs } => {
+            debug!("Dyadic Nand");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
+                let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
+                Ok(Scalar::Integer(if a & b == 1 { 0 } else { 1 }))
+            })
+        }
+        Expr::Nor { span, lhs, rhs } => {
+            debug!("Dyadic Nor");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
+                let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
+                let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
+                Ok(Scalar::Integer(if a | b == 1 { 0 } else { 1 }))
+            })
+        }
+        Expr::Replicate { span, lhs, rhs } => {
+            debug!("Dyadic Replicate");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+
+            if lhs_eval.is_scalar() {
+                // Scalar left: repeat each element n times
+                let n = match lhs_eval.data[0] {
+                    Scalar::Integer(i) if i >= 0 => i as usize,
+                    _ => return Err((span, "Replicate count must be a non-negative integer")),
+                };
+                let data: Vec<Scalar> = rhs_eval.data.iter()
+                    .flat_map(|v| std::iter::repeat_n(*v, n))
+                    .collect();
+                Ok(Val::vector(data))
+            } else {
+                if lhs_eval.data.len() != rhs_eval.data.len() {
+                    return Err((span, "Replicate: left and right arguments must have same length"));
+                }
+                let data: Vec<Scalar> = lhs_eval.data.iter()
+                    .zip(rhs_eval.data.iter())
+                    .flat_map(|(count, val)| {
+                        let n = match count {
+                            Scalar::Integer(i) => *i as usize,
+                            Scalar::Float(f) => *f as usize,
+                        };
+                        std::iter::repeat_n(*val, n)
+                    })
+                    .collect();
+                Ok(Val::vector(data))
+            }
+        }
+        Expr::Take { span, lhs, rhs } => {
+            debug!("Dyadic Take");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+
+            if !lhs_eval.is_scalar() {
+                return Err((span, "Take left argument must be a scalar integer"));
+            }
+            let n = match lhs_eval.data[0] {
+                Scalar::Integer(i) => i,
+                _ => return Err((span, "Take left argument must be an integer")),
+            };
+
+            let len = rhs_eval.data.len();
+            let abs_n = n.unsigned_abs() as usize;
+            let mut data = if n >= 0 {
+                let mut d: Vec<Scalar> = rhs_eval.data.iter().copied().take(abs_n).collect();
+                while d.len() < abs_n { d.push(Scalar::Integer(0)); }
+                d
+            } else {
+                let skip = if abs_n <= len { len - abs_n } else { 0 };
+                let mut d: Vec<Scalar> = rhs_eval.data.iter().copied().skip(skip).collect();
+                while d.len() < abs_n { d.insert(0, Scalar::Integer(0)); }
+                d
+            };
+            let _ = &mut data;
+            Ok(Val::vector(data))
+        }
+        Expr::Drop { span, lhs, rhs } => {
+            debug!("Dyadic Drop");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+
+            if !lhs_eval.is_scalar() {
+                return Err((span, "Drop left argument must be a scalar integer"));
+            }
+            let n = match lhs_eval.data[0] {
+                Scalar::Integer(i) => i,
+                _ => return Err((span, "Drop left argument must be an integer")),
+            };
+
+            let len = rhs_eval.data.len();
+            let data: Vec<Scalar> = if n >= 0 {
+                let skip = (n as usize).min(len);
+                rhs_eval.data.into_iter().skip(skip).collect()
+            } else {
+                let take = len.saturating_sub(n.unsigned_abs() as usize);
+                rhs_eval.data.into_iter().take(take).collect()
+            };
+            Ok(Val::vector(data))
+        }
+        Expr::Assign { span, .. } => {
+            Err((span, "Assignment (←) not yet implemented"))
+        }
+        Expr::OuterProduct { span, lhs, operator, rhs } => {
+            debug!("Outer Product");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+
+            let op_fn = get_operator_fn(operator);
+
+            let rows = lhs_eval.data.len();
+            let cols = rhs_eval.data.len();
+            let mut data = Vec::with_capacity(rows * cols);
+            for l in &lhs_eval.data {
+                for r in &rhs_eval.data {
+                    match op_fn(l, r) {
+                        Some(v) => data.push(v),
+                        None => return Err((span, "Outer product operation failed")),
+                    }
+                }
+            }
+            Ok(Val::new(vec![rows, cols], data))
+        }
         Expr::Conjugate { span, arg } => {
             debug!("Monadic Conjugate");
             let _ = span;
@@ -615,6 +775,24 @@ pub fn eval(
                 _ => Err((Span::new(0, 0), "Transpose only supports rank 0, 1, or 2")),
             }
         }
+        Expr::GradeUp { span, arg } => {
+            debug!("Monadic Grade Up");
+            let arg_eval = eval(lexer, *arg)?;
+            let _ = span;
+            let mut indices: Vec<usize> = (0..arg_eval.data.len()).collect();
+            indices.sort_by(|&a, &b| arg_eval.data[a].cmp(&arg_eval.data[b]));
+            let data: Vec<Scalar> = indices.iter().map(|&i| Scalar::Integer(i as i64 + 1)).collect();
+            Ok(Val::vector(data))
+        }
+        Expr::GradeDown { span, arg } => {
+            debug!("Monadic Grade Down");
+            let arg_eval = eval(lexer, *arg)?;
+            let _ = span;
+            let mut indices: Vec<usize> = (0..arg_eval.data.len()).collect();
+            indices.sort_by(|&a, &b| arg_eval.data[b].cmp(&arg_eval.data[a]));
+            let data: Vec<Scalar> = indices.iter().map(|&i| Scalar::Integer(i as i64 + 1)).collect();
+            Ok(Val::vector(data))
+        }
         Expr::Reduce {
             span,
             operator,
@@ -624,12 +802,7 @@ pub fn eval(
             let term_eval = eval(lexer, *term)?;
 
             // APL reduce is a right-fold: f/ a b c d = a f (b f (c f d))
-            let op_fn: fn(&Scalar, &Scalar) -> Option<Scalar> = match operator {
-                Operator::Add => |a, b| a.checked_add(b),
-                Operator::Subtract => |a, b| a.checked_sub(b),
-                Operator::Multiply => |a, b| a.checked_mul(b),
-                Operator::Divide => |a, b| a.checked_div(b),
-            };
+            let op_fn = get_operator_fn(operator);
 
             let result = term_eval.data.iter().rev().copied().try_fold(None, |acc, n| {
                 match acc {
@@ -641,6 +814,31 @@ pub fn eval(
             result
                 .map(Val::scalar)
                 .ok_or((span, "Arithmetic error or invalid operation in Reduce"))
+        }
+        Expr::Scan {
+            span,
+            operator,
+            term,
+        } => {
+            debug!("Scan");
+            let term_eval = eval(lexer, *term)?;
+
+            let op_fn = get_operator_fn(operator);
+
+            // Scan: each element i is the right-fold reduce of prefix 0..=i
+            let mut data = Vec::with_capacity(term_eval.data.len());
+            for i in 0..term_eval.data.len() {
+                let prefix = &term_eval.data[..=i];
+                let result = prefix.iter().rev().copied().try_fold(None::<Scalar>, |acc, n| {
+                    match acc {
+                        None => Some(Some(n)),
+                        Some(right) => op_fn(&n, &right).map(Some),
+                    }
+                }).flatten()
+                    .ok_or((span, "Arithmetic error in Scan"))?;
+                data.push(result);
+            }
+            Ok(Val::vector(data))
         }
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");
