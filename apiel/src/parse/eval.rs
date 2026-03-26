@@ -497,9 +497,11 @@ pub fn eval(
                     Scalar::Integer(i) => *i,
                     Scalar::Float(f) => *f as i64,
                 };
-                if n == 1 {
+                if n > 0 {
                     match rhs_iter.next() {
-                        Some(&v) => data.push(v),
+                        Some(&v) => {
+                            for _ in 0..n { data.push(v); }
+                        }
                         None => return Err((span, "Expand: not enough data elements")),
                     }
                 } else {
@@ -1017,6 +1019,143 @@ pub fn eval(
             dfn_env.fns.insert("∇".to_string(), stored.clone());
             eval_stored_dfn(&stored, &mut dfn_env)
                 .map_err(|(_span, msg)| (span, Box::leak(msg.into_boxed_str()) as &'static str))
+        }
+        Expr::First { span, arg } => {
+            debug!("Monadic First");
+            let arg_eval = eval(lexer, *arg, env)?;
+            let _ = span;
+            Ok(Val::scalar(arg_eval.data.into_iter().next().unwrap_or(Scalar::Integer(0))))
+        }
+        Expr::Unique { arg, .. } => {
+            debug!("Monadic Unique");
+            let arg_eval = eval(lexer, *arg, env)?;
+            let mut seen = Vec::new();
+            for v in &arg_eval.data {
+                if !seen.contains(v) { seen.push(*v); }
+            }
+            Ok(Val::vector(seen))
+        }
+        Expr::Not { span, arg } => {
+            debug!("Monadic Not");
+            let arg_eval = eval(lexer, *arg, env)?;
+            apply_monadic_operation(span, &arg_eval, |a| {
+                Ok(Scalar::Integer(if *a == Scalar::Integer(0) { 1 } else { 0 }))
+            })
+        }
+        Expr::Union { span, lhs, rhs } => {
+            debug!("Dyadic Union");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let _ = span;
+            let mut data = lhs_eval.data;
+            for v in &rhs_eval.data {
+                if !data.contains(v) { data.push(*v); }
+            }
+            Ok(Val::vector(data))
+        }
+        Expr::Intersection { span, lhs, rhs } => {
+            debug!("Dyadic Intersection");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let _ = span;
+            let data: Vec<Scalar> = lhs_eval.data.iter()
+                .filter(|v| rhs_eval.data.contains(v))
+                .copied()
+                .collect();
+            Ok(Val::vector(data))
+        }
+        Expr::Without { span, lhs, rhs } => {
+            debug!("Dyadic Without");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let _ = span;
+            let data: Vec<Scalar> = lhs_eval.data.iter()
+                .filter(|v| !rhs_eval.data.contains(v))
+                .copied()
+                .collect();
+            Ok(Val::vector(data))
+        }
+        Expr::Decode { span, lhs, rhs } => {
+            debug!("Dyadic Decode");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            if !lhs_eval.is_scalar() {
+                return Err((span, "Decode: left argument must be a scalar base"));
+            }
+            let base = f64::from(lhs_eval.data[0]);
+            let result = rhs_eval.data.iter().fold(0.0_f64, |acc, v| {
+                acc * base + f64::from(*v)
+            });
+            Ok(Val::scalar(Scalar::Integer(result as i64)))
+        }
+        Expr::Encode { span, lhs, rhs } => {
+            debug!("Dyadic Encode");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            if !rhs_eval.is_scalar() {
+                return Err((span, "Encode: right argument must be a scalar"));
+            }
+            let mut n = f64::from(rhs_eval.data[0]) as i64;
+            let bases: Vec<i64> = lhs_eval.data.iter().map(|v| f64::from(*v) as i64).collect();
+            let mut data: Vec<Scalar> = vec![Scalar::Integer(0); bases.len()];
+            for i in (0..bases.len()).rev() {
+                if bases[i] != 0 {
+                    data[i] = Scalar::Integer(n % bases[i]);
+                    n /= bases[i];
+                }
+            }
+            Ok(Val::vector(data))
+        }
+        Expr::InnerProduct { span, lhs, f, g, rhs } => {
+            debug!("Inner Product");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let f_fn = get_operator_fn(f);
+            let g_fn = get_operator_fn(g);
+
+            match (lhs_eval.shape.len(), rhs_eval.shape.len()) {
+                (1, 1) => {
+                    // Vector inner product: +/ lhs × rhs
+                    if lhs_eval.data.len() != rhs_eval.data.len() {
+                        return Err((span, "Inner product: lengths must match"));
+                    }
+                    let products: Vec<Scalar> = lhs_eval.data.iter().zip(rhs_eval.data.iter())
+                        .map(|(a, b)| g_fn(a, b).ok_or((span, "Inner product g failed")))
+                        .collect::<Result<Vec<_>, _>>()?;
+                    let result = products.iter().rev().copied().try_fold(None::<Scalar>, |acc, n| {
+                        match acc {
+                            None => Some(Some(n)),
+                            Some(right) => f_fn(&n, &right).map(Some),
+                        }
+                    }).flatten().ok_or((span, "Inner product f failed"))?;
+                    Ok(Val::scalar(result))
+                }
+                (2, 2) => {
+                    // Matrix inner product
+                    let m = lhs_eval.shape[0];
+                    let k = lhs_eval.shape[1];
+                    let n = rhs_eval.shape[1];
+                    if k != rhs_eval.shape[0] {
+                        return Err((span, "Inner product: inner dimensions must match"));
+                    }
+                    let mut data = Vec::with_capacity(m * n);
+                    for i in 0..m {
+                        for j in 0..n {
+                            let products: Vec<Scalar> = (0..k)
+                                .map(|p| g_fn(&lhs_eval.data[i * k + p], &rhs_eval.data[p * n + j])
+                                    .ok_or((span, "Inner product g failed")))
+                                .collect::<Result<Vec<_>, _>>()?;
+                            let result = products.iter().copied().reduce(|a, b| f_fn(&a, &b).unwrap_or(a))
+                                .ok_or((span, "Inner product f failed"))?;
+                            data.push(result);
+                        }
+                    }
+                    Ok(Val::new(vec![m, n], data))
+                }
+                _ => Err((span, "Inner product: only rank 1 and 2 supported")),
+            }
         }
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");

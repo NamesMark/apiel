@@ -125,6 +125,27 @@ Term -> Result<Expr, ()>:
     | Factor 'NAME' Factor {
         Ok(Expr::NamedDyadic{ span: $span, lhs: Box::new($1?), name: $2.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($3?) })
       }
+    | Factor 'UNIQUE' Term {
+        Ok(Expr::Union{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'INTERSECT' Term {
+        Ok(Expr::Intersection{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'TILDE' Term {
+        Ok(Expr::Without{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'DECODE' Term {
+        Ok(Expr::Decode{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'ENCODE' Term {
+        Ok(Expr::Encode{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor Operator 'DOT' Operator Term {
+        match ($2, $4) {
+            (Ok(f), Ok(g)) => Ok(Expr::InnerProduct{ span: $span, lhs: Box::new($1?), f, g, rhs: Box::new($5?) }),
+            _ => Err(())
+        }
+      }
     | MonadicFactor {
         Ok($1?)
       }
@@ -201,6 +222,15 @@ MonadicFactor -> Result<Expr, ()>:
       }
     | 'SELF' Term {
         Ok(Expr::SelfCall{ span: $span, arg: Box::new($2?) })
+      }
+    | 'FIRST' Term {
+        Ok(Expr::First{ span: $span, arg: Box::new($2?) })
+      }
+    | 'UNIQUE' Term {
+        Ok(Expr::Unique{ span: $span, arg: Box::new($2?) })
+      }
+    | 'TILDE' Term {
+        Ok(Expr::Not{ span: $span, arg: Box::new($2?) })
       }
     ;
 
@@ -516,6 +546,50 @@ pub enum Expr {
         lhs: Box<Expr>,
         name: String,
         rhs: Box<Expr>,
+    },
+    Union {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Intersection {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Without {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Decode {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Encode {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    InnerProduct {
+        span: Span,
+        lhs: Box<Expr>,
+        f: Operator,
+        g: Operator,
+        rhs: Box<Expr>,
+    },
+    First {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Unique {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Not {
+        span: Span,
+        arg: Box<Expr>,
     },
     OuterProduct {
         span: Span,
