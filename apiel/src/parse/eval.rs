@@ -1,4 +1,3 @@
-// MARK: eval
 use super::*;
 use crate::parse::apiel_y::Operator;
 use val::{Val, CheckedPow, Log};
@@ -67,7 +66,6 @@ pub fn eval(
     e: Expr,
 ) -> Result<Vec<Val>, (Span, &'static str)> {
     match e {
-        // MARK: Dyadic:
         Expr::Add { span, lhs, rhs } => {
             debug!("Dyadic Add");
             let lhs_eval = eval(lexer, *lhs)?;
@@ -239,7 +237,6 @@ pub fn eval(
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, residue_operation)
         }
 
-        // MARK: Monadic
         Expr::Conjugate { span, arg } => {
             debug!("Monadic Conjugate");
             let _ = span;
@@ -550,7 +547,6 @@ pub fn eval(
                 .ok_or((span, "Arithmetic error or invalid operation in Reduce"))
         }
 
-        // MARK: Values
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");
             lexer
