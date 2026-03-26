@@ -18,7 +18,7 @@ fn assert_apl(expr: &str, expected: &[f64], desc: &str) {
 }
 
 #[test]
-fn dyalog_reference_battery() {
+fn reference_tests() {
     let e = std::f64::consts::E;
     let pi = std::f64::consts::PI;
 
@@ -95,6 +95,15 @@ fn dyalog_reference_battery() {
         ("1 + +/ 1 2 3",                &[7.0],                                 "scalar plus reduce"),
         ("-/ ⍳ 6",                       &[-3.0],                                "reduce-sub of iota"),
         ("! +/ 1 2",                     &[6.0],                                 "factorial of reduce"),
+        // Dyadic ⍳ (Index Of)
+        ("1 2 3 4 5 ⍳ 3",              &[3.0],                                 "index of: scalar found"),
+        ("1 2 3 4 5 ⍳ 6",              &[6.0],                                 "index of: scalar not found"),
+        ("10 20 30 ⍳ 20 40 10",         &[2.0, 4.0, 1.0],                      "index of: vector mixed"),
+        ("1 2 3 4 5 ⍳ 3 1 4 1 5",      &[3.0, 1.0, 4.0, 1.0, 5.0],           "index of: vector all found"),
+        // Dyadic ⍸ (Interval Index)
+        ("2 4 6 8 ⍸ 3 5 7",            &[1.0, 2.0, 3.0],                      "interval index: between"),
+        ("10 20 30 40 ⍸ 15 25 35 45",   &[1.0, 2.0, 3.0, 4.0],                "interval index: between tens"),
+        ("1 3 5 7 ⍸ 0 1 2 3 4 5 6 7 8", &[0.0,1.0,1.0,2.0,2.0,3.0,3.0,4.0,4.0], "interval index: full range"),
     ];
 
     let mut failures = Vec::new();
