@@ -129,6 +129,16 @@ fn reference_tests() {
         ("4 ≥ 4",                       &[1.0],                                 "geq equal"),
         ("5 ≥ 4",                       &[1.0],                                 "geq greater"),
         ("1 2 3 < 2 2 2",              &[1.0, 0.0, 0.0],                      "less than vector"),
+        // Shape (monadic ⍴)
+        ("⍴ 5",                         &[],                                    "shape of scalar"),
+        ("⍴ 1 2 3",                     &[3.0],                                 "shape of vector"),
+        ("⍴ ⍳ 0",                       &[0.0],                                 "shape of empty vector"),
+        // Reshape (dyadic ⍴)
+        ("3 ⍴ 1 2 3 4 5",              &[1.0, 2.0, 3.0],                      "reshape truncate"),
+        ("5 ⍴ 1 2",                     &[1.0, 2.0, 1.0, 2.0, 1.0],           "reshape cycle"),
+        ("2 3 ⍴ ⍳ 6",                   &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],     "reshape matrix"),
+        ("2 3 ⍴ 1",                     &[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],     "reshape scalar cycle"),
+        ("⍴ 2 3 ⍴ ⍳ 6",                &[2.0, 3.0],                           "shape of reshaped matrix"),
     ];
 
     let mut failures = Vec::new();
