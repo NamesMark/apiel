@@ -60,7 +60,6 @@ where
         .map_err(|_| (span, "Operation failed"))
 }
 
-//#[tracing::instrument(skip(lexer, e))]
 pub fn eval(
     lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
     e: Expr,
@@ -483,18 +482,6 @@ pub fn eval(
                     "Generate index only accepts non-negative integer values as right operand",
                 )),
             }
-
-            // TODO: implement multidimensional version
-            // let generate_index_operation = |a: &ValArray| match a {
-            //     ValArray::Single(Val::Integer(i)) if *i >= 0 => Ok(iota(*i)),
-            //     ValArray::Array(vec) if vec.iter().all(|v| matches!(v, ValArray::Single(Val::Integer(_)))) => {
-            //         let dims: Vec<i64> = vec.iter().map(|v| if let ValArray::Single(Val::Integer(i)) = v { *i } else { 0 }).collect();
-            //         Ok(multidimensional_iota(&dims))
-            //     },
-            //     _ => eyre::bail!("Generate index only accepts non-negative integers or vectors of integers as right operand"),
-            // };
-
-            //apply_monadic_operation(span, &arg_eval, generate_index_operation)
         }
         Expr::Where { arg, .. } => {
             debug!("Monadic Where");
@@ -583,21 +570,3 @@ pub fn eval(
         }
     }
 }
-
-// fn check_lengths<N>(lhs_eval: &Vec<N>, rhs_eval: &Vec<N>) -> bool {
-//     lhs_eval.len() == rhs_eval.len() || lhs_eval.len() == 1 || rhs_eval.len() == 1
-// }
-
-// fn iota(n: i64) -> ValArray {
-//     ValArray::Array((1..=n).map(|x| ValArray::Single(Val::Integer(x))).collect())
-// }
-
-// fn multidimensional_iota(dims: &[i64]) -> ValArray {
-//     if dims.len() == 1 {
-//         iota(dims[0])
-//     } else {
-//         let head = dims[0];
-//         let tail = &dims[1..];
-//         ValArray::Array((1..=head).map(|_| multidimensional_iota(tail)).collect())
-//     }
-// }

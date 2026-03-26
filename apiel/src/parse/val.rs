@@ -19,18 +19,6 @@ impl Val {
     }
 }
 
-// #[derive(Debug, Clone)]
-// enum ValArray {
-//     Single(Val),
-//     Array(Vec<ValArray>),
-// }
-
-// impl From<Val> for ValArray {
-//     fn from(val: Val) -> Self {
-//         Self::Single(val)
-//     }
-// }
-
 impl TryFrom<Val> for usize {
     type Error = &'static str;
 
