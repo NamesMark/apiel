@@ -1,17 +1,17 @@
-use std::collections::HashMap;
-use std::rc::Rc;
 use super::*;
 use crate::parse::apiel_y::{Expr, Operator};
-use val::{Scalar, Val, CheckedPow, Log};
 use eyre::{OptionExt, Result};
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 use rand::Rng;
+use std::collections::HashMap;
+use std::rc::Rc;
 use tracing::{debug, error};
+use val::{CheckedPow, Log, Scalar, Val};
 
 #[derive(Debug, Clone)]
 pub struct StoredDfn {
     pub body: Rc<Expr>,
-    pub source: String,  // original input line for correct span resolution
+    pub source: String, // original input line for correct span resolution
 }
 
 #[derive(Debug, Clone, Default)]
@@ -26,15 +26,11 @@ impl Env {
     }
 }
 
-fn eval_stored_dfn(
-    stored: &StoredDfn,
-    env: &mut Env,
-) -> Result<Val, (Span, String)> {
+fn eval_stored_dfn(stored: &StoredDfn, env: &mut Env) -> Result<Val, (Span, String)> {
     use crate::parse::apiel_l;
     let lexerdef = apiel_l::lexerdef();
     let lex = lexerdef.lexer(&stored.source);
-    eval(&lex, (*stored.body).clone(), env)
-        .map_err(|(span, msg)| (span, msg.to_string()))
+    eval(&lex, (*stored.body).clone(), env).map_err(|(span, msg)| (span, msg.to_string()))
 }
 
 fn apply_dyadic_operation<F>(
@@ -47,19 +43,25 @@ where
     F: Fn(&Scalar, &Scalar) -> Result<Scalar>,
 {
     if lhs.is_scalar() {
-        let data = rhs.data.iter()
+        let data = rhs
+            .data
+            .iter()
             .map(|r| operation(&lhs.data[0], r))
             .collect::<Result<Vec<Scalar>, _>>()
             .map_err(|_| (span, "Operation failed"))?;
         Ok(Val::new(rhs.shape.clone(), data))
     } else if rhs.is_scalar() {
-        let data = lhs.data.iter()
+        let data = lhs
+            .data
+            .iter()
             .map(|l| operation(l, &rhs.data[0]))
             .collect::<Result<Vec<Scalar>, _>>()
             .map_err(|_| (span, "Operation failed"))?;
         Ok(Val::new(lhs.shape.clone(), data))
     } else if lhs.shape == rhs.shape {
-        let data = lhs.data.iter()
+        let data = lhs
+            .data
+            .iter()
             .zip(rhs.data.iter())
             .map(|(l, r)| operation(l, r))
             .collect::<Result<Vec<Scalar>, _>>()
@@ -81,7 +83,9 @@ fn apply_monadic_operation<F>(
 where
     F: Fn(&Scalar) -> Result<Scalar>,
 {
-    let data = arg.data.iter()
+    let data = arg
+        .data
+        .iter()
         .map(operation)
         .collect::<Result<Vec<Scalar>>>()
         .map_err(|_| (span, "Operation failed"))?;
@@ -161,7 +165,8 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
 
-            let pow_operation = |a: &Scalar, b: &Scalar| match TryInto::<usize>::try_into(b.clone()) {
+            let pow_operation = |a: &Scalar, b: &Scalar| match TryInto::<usize>::try_into(b.clone())
+            {
                 Ok(int_exp) => a.checked_pow(int_exp).ok_or_eyre(format!(
                     "Exponentiation overflow or invalid operation for {a:?} and {int_exp:?}"
                 )),
@@ -177,11 +182,16 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
 
-            apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |base: &Scalar, value: &Scalar| {
-                value.log(base).ok_or_eyre(format!(
+            apply_dyadic_operation(
+                span,
+                &lhs_eval,
+                &rhs_eval,
+                |base: &Scalar, value: &Scalar| {
+                    value.log(base).ok_or_eyre(format!(
                     "Somehow failed to compute the logarithm of {base:?} and {value:?}: {span:?}"
                 ))
-            })
+                },
+            )
         }
         Expr::Min { span, lhs, rhs } => {
             debug!("Dyadic Min");
@@ -287,9 +297,13 @@ pub fn eval(
             let _ = span;
             let not_found = lhs_eval.data.len() as i64 + 1;
 
-            let data = rhs_eval.data.iter()
+            let data = rhs_eval
+                .data
+                .iter()
                 .map(|needle| {
-                    let pos = lhs_eval.data.iter()
+                    let pos = lhs_eval
+                        .data
+                        .iter()
                         .position(|hay| hay == needle)
                         .map(|i| i as i64 + 1)
                         .unwrap_or(not_found);
@@ -307,7 +321,9 @@ pub fn eval(
             let rhs_eval = eval(lexer, *rhs, env)?;
             let _ = span;
 
-            let data = rhs_eval.data.iter()
+            let data = rhs_eval
+                .data
+                .iter()
                 .map(|val| {
                     let count = lhs_eval.data.iter().filter(|&a| a <= val).count();
                     Scalar::Integer(count as i64)
@@ -321,16 +337,17 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
 
-            let new_shape: Vec<usize> = lhs_eval.data.iter()
-                .map(|s| usize::try_from(s.clone()).map_err(|_| (span, "Reshape dimensions must be non-negative integers")))
+            let new_shape: Vec<usize> = lhs_eval
+                .data
+                .iter()
+                .map(|s| {
+                    usize::try_from(s.clone())
+                        .map_err(|_| (span, "Reshape dimensions must be non-negative integers"))
+                })
                 .collect::<Result<Vec<usize>, _>>()?;
 
             let total: usize = new_shape.iter().product::<usize>().max(1);
-            let data: Vec<Scalar> = rhs_eval.data.iter()
-                .cloned()
-                .cycle()
-                .take(total)
-                .collect();
+            let data: Vec<Scalar> = rhs_eval.data.iter().cloned().cycle().take(total).collect();
 
             Ok(Val::new(new_shape, data))
         }
@@ -465,15 +482,22 @@ pub fn eval(
                     Scalar::Integer(i) if i >= 0 => i as usize,
                     _ => return Err((span, "Replicate count must be a non-negative integer")),
                 };
-                let data: Vec<Scalar> = rhs_eval.data.iter()
+                let data: Vec<Scalar> = rhs_eval
+                    .data
+                    .iter()
                     .flat_map(|v| std::iter::repeat_n(v.clone(), n))
                     .collect();
                 Ok(Val::vector(data))
             } else {
                 if lhs_eval.data.len() != rhs_eval.data.len() {
-                    return Err((span, "Replicate: left and right arguments must have same length"));
+                    return Err((
+                        span,
+                        "Replicate: left and right arguments must have same length",
+                    ));
                 }
-                let data: Vec<Scalar> = lhs_eval.data.iter()
+                let data: Vec<Scalar> = lhs_eval
+                    .data
+                    .iter()
                     .zip(rhs_eval.data.iter())
                     .flat_map(|(count, val)| {
                         let n = match count {
@@ -503,7 +527,9 @@ pub fn eval(
                 if n > 0 {
                     match rhs_iter.next() {
                         Some(v) => {
-                            for _ in 0..n { data.push(v.clone()); }
+                            for _ in 0..n {
+                                data.push(v.clone());
+                            }
                         }
                         None => return Err((span, "Expand: not enough data elements")),
                     }
@@ -559,12 +585,16 @@ pub fn eval(
             let abs_n = n.unsigned_abs() as usize;
             let mut data = if n >= 0 {
                 let mut d: Vec<Scalar> = rhs_eval.data.iter().cloned().take(abs_n).collect();
-                while d.len() < abs_n { d.push(Scalar::Integer(0)); }
+                while d.len() < abs_n {
+                    d.push(Scalar::Integer(0));
+                }
                 d
             } else {
                 let skip = if abs_n <= len { len - abs_n } else { 0 };
                 let mut d: Vec<Scalar> = rhs_eval.data.iter().cloned().skip(skip).collect();
-                while d.len() < abs_n { d.insert(0, Scalar::Integer(0)); }
+                while d.len() < abs_n {
+                    d.insert(0, Scalar::Integer(0));
+                }
                 d
             };
             let _ = &mut data;
@@ -599,7 +629,12 @@ pub fn eval(
             env.vars.insert(name, val.clone());
             Ok(val)
         }
-        Expr::OuterProduct { span, lhs, operator, rhs } => {
+        Expr::OuterProduct {
+            span,
+            lhs,
+            operator,
+            rhs,
+        } => {
             debug!("Outer Product");
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
@@ -781,7 +816,9 @@ pub fn eval(
             debug!("Monadic Maximum");
             let arg_eval = eval(lexer, *arg, env)?;
 
-            arg_eval.data.iter()
+            arg_eval
+                .data
+                .iter()
                 .max()
                 .ok_or((span, "Cannot find max"))
                 .map(|num| Val::scalar(num.clone()))
@@ -790,7 +827,9 @@ pub fn eval(
             debug!("Monadic Minimum");
             let arg_eval = eval(lexer, *arg, env)?;
 
-            arg_eval.data.iter()
+            arg_eval
+                .data
+                .iter()
                 .min()
                 .ok_or((span, "Cannot find min"))
                 .map(|num| Val::scalar(num.clone()))
@@ -818,7 +857,9 @@ pub fn eval(
             debug!("Monadic Where");
             let arg_eval = eval(lexer, *arg, env)?;
 
-            let data: Vec<Scalar> = arg_eval.data.iter()
+            let data: Vec<Scalar> = arg_eval
+                .data
+                .iter()
                 .enumerate()
                 .flat_map(|(index, val)| match val {
                     Scalar::Integer(i) if *i > 0 => vec![index as i64 + 1; *i as usize]
@@ -836,7 +877,9 @@ pub fn eval(
         Expr::Shape { arg, .. } => {
             debug!("Monadic Shape");
             let arg_eval = eval(lexer, *arg, env)?;
-            let data: Vec<Scalar> = arg_eval.shape.iter()
+            let data: Vec<Scalar> = arg_eval
+                .shape
+                .iter()
                 .map(|&s| Scalar::Integer(s as i64))
                 .collect();
             Ok(Val::vector(data))
@@ -878,7 +921,10 @@ pub fn eval(
             let _ = span;
             let mut indices: Vec<usize> = (0..arg_eval.data.len()).collect();
             indices.sort_by(|&a, &b| arg_eval.data[a].cmp(&arg_eval.data[b]));
-            let data: Vec<Scalar> = indices.iter().map(|&i| Scalar::Integer(i as i64 + 1)).collect();
+            let data: Vec<Scalar> = indices
+                .iter()
+                .map(|&i| Scalar::Integer(i as i64 + 1))
+                .collect();
             Ok(Val::vector(data))
         }
         Expr::GradeDown { span, arg } => {
@@ -887,7 +933,10 @@ pub fn eval(
             let _ = span;
             let mut indices: Vec<usize> = (0..arg_eval.data.len()).collect();
             indices.sort_by(|&a, &b| arg_eval.data[b].cmp(&arg_eval.data[a]));
-            let data: Vec<Scalar> = indices.iter().map(|&i| Scalar::Integer(i as i64 + 1)).collect();
+            let data: Vec<Scalar> = indices
+                .iter()
+                .map(|&i| Scalar::Integer(i as i64 + 1))
+                .collect();
             Ok(Val::vector(data))
         }
         Expr::Reduce {
@@ -901,12 +950,16 @@ pub fn eval(
             // APL reduce is a right-fold: f/ a b c d = a f (b f (c f d))
             let op_fn = get_operator_fn(operator);
 
-            let result = term_eval.data.iter().rev().cloned().try_fold(None, |acc, n| {
-                match acc {
+            let result = term_eval
+                .data
+                .iter()
+                .rev()
+                .cloned()
+                .try_fold(None, |acc, n| match acc {
                     None => Some(Some(n)),
                     Some(right) => op_fn(&n, &right).map(Some),
-                }
-            }).flatten();
+                })
+                .flatten();
 
             result
                 .map(Val::scalar)
@@ -926,12 +979,15 @@ pub fn eval(
             let mut data = Vec::with_capacity(term_eval.data.len());
             for i in 0..term_eval.data.len() {
                 let prefix = &term_eval.data[..=i];
-                let result = prefix.iter().rev().cloned().try_fold(None::<Scalar>, |acc, n| {
-                    match acc {
+                let result = prefix
+                    .iter()
+                    .rev()
+                    .cloned()
+                    .try_fold(None::<Scalar>, |acc, n| match acc {
                         None => Some(Some(n)),
                         Some(right) => op_fn(&n, &right).map(Some),
-                    }
-                }).flatten()
+                    })
+                    .flatten()
                     .ok_or((span, "Arithmetic error in Scan"))?;
                 data.push(result);
             }
@@ -939,30 +995,48 @@ pub fn eval(
         }
         Expr::Variable { span, name } => {
             debug!("Variable: {name}");
-            env.vars.get(&name).cloned().ok_or((span, "Undefined variable"))
+            env.vars
+                .get(&name)
+                .cloned()
+                .ok_or((span, "Undefined variable"))
         }
-        Expr::Omega { span } => {
-            env.vars.get("⍵").cloned().ok_or((span, "⍵ used outside of a dfn"))
-        }
-        Expr::Alpha { span } => {
-            env.vars.get("⍺").cloned().ok_or((span, "⍺ used outside of a dfn"))
-        }
+        Expr::Omega { span } => env
+            .vars
+            .get("⍵")
+            .cloned()
+            .ok_or((span, "⍵ used outside of a dfn")),
+        Expr::Alpha { span } => env
+            .vars
+            .get("⍺")
+            .cloned()
+            .ok_or((span, "⍺ used outside of a dfn")),
         Expr::MonadicDfn { span, body, rhs } => {
             debug!("Monadic Dfn");
             let rhs_val = eval(lexer, *rhs, env)?;
             let body_rc = Rc::new(*body);
-            let stored = StoredDfn { body: Rc::clone(&body_rc), source: lexer.span_str(span).to_string() };
+            let stored = StoredDfn {
+                body: Rc::clone(&body_rc),
+                source: lexer.span_str(span).to_string(),
+            };
             let mut dfn_env = env.clone();
             dfn_env.vars.insert("⍵".to_string(), rhs_val);
             dfn_env.fns.insert("∇".to_string(), stored);
             eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
-        Expr::DyadicDfn { span, lhs, body, rhs } => {
+        Expr::DyadicDfn {
+            span,
+            lhs,
+            body,
+            rhs,
+        } => {
             debug!("Dyadic Dfn");
             let lhs_val = eval(lexer, *lhs, env)?;
             let rhs_val = eval(lexer, *rhs, env)?;
             let body_rc = Rc::new(*body);
-            let stored = StoredDfn { body: Rc::clone(&body_rc), source: lexer.span_str(span).to_string() };
+            let stored = StoredDfn {
+                body: Rc::clone(&body_rc),
+                source: lexer.span_str(span).to_string(),
+            };
             let mut dfn_env = env.clone();
             dfn_env.vars.insert("⍺".to_string(), lhs_val);
             dfn_env.vars.insert("⍵".to_string(), rhs_val);
@@ -972,14 +1046,19 @@ pub fn eval(
         Expr::SelfCall { span, arg } => {
             debug!("Self-reference ∇");
             let arg_val = eval(lexer, *arg, env)?;
-            let stored = env.fns.get("∇").cloned()
+            let stored = env
+                .fns
+                .get("∇")
+                .cloned()
                 .ok_or((span, "∇ used outside of a dfn"))?;
             let mut self_env = env.clone();
             self_env.vars.insert("⍵".to_string(), arg_val);
             eval_stored_dfn(&stored, &mut self_env)
                 .map_err(|(_span, msg)| (span, Box::leak(msg.into_boxed_str()) as &'static str))
         }
-        Expr::DfnGuard { cond, result, rest, .. } => {
+        Expr::DfnGuard {
+            cond, result, rest, ..
+        } => {
             debug!("Dfn Guard");
             let cond_val = eval(lexer, *cond, env)?;
             let is_true = match cond_val.data.first() {
@@ -1000,13 +1079,19 @@ pub fn eval(
         }
         Expr::AssignDfn { span, name, body } => {
             debug!("Assign Dfn");
-            let stored = StoredDfn { body: Rc::new(*body), source: lexer.span_str(span).to_string() };
+            let stored = StoredDfn {
+                body: Rc::new(*body),
+                source: lexer.span_str(span).to_string(),
+            };
             env.fns.insert(name, stored);
             Ok(Val::scalar(Scalar::Integer(0)))
         }
         Expr::NamedMonadic { span, name, rhs } => {
             debug!("Named Monadic: {name}");
-            let stored = env.fns.get(&name).cloned()
+            let stored = env
+                .fns
+                .get(&name)
+                .cloned()
                 .ok_or((span, "Undefined function"))?;
             let rhs_val = eval(lexer, *rhs, env)?;
             let mut dfn_env = env.clone();
@@ -1015,9 +1100,17 @@ pub fn eval(
             eval_stored_dfn(&stored, &mut dfn_env)
                 .map_err(|(_span, msg)| (span, Box::leak(msg.into_boxed_str()) as &'static str))
         }
-        Expr::NamedDyadic { span, lhs, name, rhs } => {
+        Expr::NamedDyadic {
+            span,
+            lhs,
+            name,
+            rhs,
+        } => {
             debug!("Named Dyadic: {name}");
-            let stored = env.fns.get(&name).cloned()
+            let stored = env
+                .fns
+                .get(&name)
+                .cloned()
                 .ok_or((span, "Undefined function"))?;
             let lhs_val = eval(lexer, *lhs, env)?;
             let rhs_val = eval(lexer, *rhs, env)?;
@@ -1091,7 +1184,8 @@ pub fn eval(
             let apply_to_val = |v: &Val| -> Result<Val, (Span, &'static str)> {
                 match func.as_str() {
                     "shape" => {
-                        let data: Vec<Scalar> = v.shape.iter().map(|&s| Scalar::Integer(s as i64)).collect();
+                        let data: Vec<Scalar> =
+                            v.shape.iter().map(|&s| Scalar::Integer(s as i64)).collect();
                         Ok(Val::vector(data))
                     }
                     "reverse" => {
@@ -1111,7 +1205,9 @@ pub fn eval(
                 }
             };
 
-            let data: Vec<Scalar> = arg_eval.data.iter()
+            let data: Vec<Scalar> = arg_eval
+                .data
+                .iter()
                 .map(|elem| match elem {
                     Scalar::Nested(v) => apply_to_val(v).map(|r| Scalar::Nested(Box::new(r))),
                     Scalar::Integer(n) => apply_to_val(&Val::scalar(Scalar::Integer(*n)))
@@ -1121,29 +1217,43 @@ pub fn eval(
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(Val::vector(data))
         }
-        Expr::ReduceEach { span, operator, term } => {
+        Expr::ReduceEach {
+            span,
+            operator,
+            term,
+        } => {
             debug!("Reduce Each");
             let term_eval = eval(lexer, *term, env)?;
             let op_fn = get_operator_fn(operator);
 
-            let data: Vec<Scalar> = term_eval.data.iter()
+            let data: Vec<Scalar> = term_eval
+                .data
+                .iter()
                 .map(|elem| {
                     let inner = match elem {
                         Scalar::Nested(v) => &v.data,
                         _ => return Err((span, "Reduce each: elements must be nested")),
                     };
-                    inner.iter().rev().cloned().try_fold(None::<Scalar>, |acc, n| {
-                        match acc {
+                    inner
+                        .iter()
+                        .rev()
+                        .cloned()
+                        .try_fold(None::<Scalar>, |acc, n| match acc {
                             None => Some(Some(n)),
                             Some(right) => op_fn(&n, &right).map(Some),
-                        }
-                    }).flatten()
+                        })
+                        .flatten()
                         .ok_or((span, "Reduce each: operation failed"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(Val::vector(data))
         }
-        Expr::DyadicEach { span, lhs, operator, rhs } => {
+        Expr::DyadicEach {
+            span,
+            lhs,
+            operator,
+            rhs,
+        } => {
             debug!("Dyadic Each");
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
@@ -1155,17 +1265,24 @@ pub fn eval(
             };
 
             if lhs_eval.is_scalar() {
-                let data: Vec<Scalar> = rhs_eval.data.iter()
+                let data: Vec<Scalar> = rhs_eval
+                    .data
+                    .iter()
                     .map(|r| apply(&lhs_eval.data[0], r))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Val::new(rhs_eval.shape, data))
             } else if rhs_eval.is_scalar() {
-                let data: Vec<Scalar> = lhs_eval.data.iter()
+                let data: Vec<Scalar> = lhs_eval
+                    .data
+                    .iter()
                     .map(|l| apply(l, &rhs_eval.data[0]))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Val::new(lhs_eval.shape, data))
             } else {
-                let data: Vec<Scalar> = lhs_eval.data.iter().zip(rhs_eval.data.iter())
+                let data: Vec<Scalar> = lhs_eval
+                    .data
+                    .iter()
+                    .zip(rhs_eval.data.iter())
                     .map(|(l, r)| apply(l, r))
                     .collect::<Result<Vec<_>, _>>()?;
                 Ok(Val::new(lhs_eval.shape, data))
@@ -1176,7 +1293,9 @@ pub fn eval(
             let arg_eval = eval(lexer, *arg, env)?;
             let mut seen = Vec::new();
             for v in &arg_eval.data {
-                if !seen.contains(v) { seen.push(v.clone()); }
+                if !seen.contains(v) {
+                    seen.push(v.clone());
+                }
             }
             Ok(Val::vector(seen))
         }
@@ -1184,7 +1303,11 @@ pub fn eval(
             debug!("Monadic Not");
             let arg_eval = eval(lexer, *arg, env)?;
             apply_monadic_operation(span, &arg_eval, |a| {
-                Ok(Scalar::Integer(if *a == Scalar::Integer(0) { 1 } else { 0 }))
+                Ok(Scalar::Integer(if *a == Scalar::Integer(0) {
+                    1
+                } else {
+                    0
+                }))
             })
         }
         Expr::Union { span, lhs, rhs } => {
@@ -1194,7 +1317,9 @@ pub fn eval(
             let _ = span;
             let mut data = lhs_eval.data;
             for v in &rhs_eval.data {
-                if !data.contains(v) { data.push(v.clone()); }
+                if !data.contains(v) {
+                    data.push(v.clone());
+                }
             }
             Ok(Val::vector(data))
         }
@@ -1203,7 +1328,9 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
             let _ = span;
-            let data: Vec<Scalar> = lhs_eval.data.iter()
+            let data: Vec<Scalar> = lhs_eval
+                .data
+                .iter()
                 .filter(|v| rhs_eval.data.contains(v))
                 .cloned()
                 .collect();
@@ -1214,7 +1341,9 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
             let _ = span;
-            let data: Vec<Scalar> = lhs_eval.data.iter()
+            let data: Vec<Scalar> = lhs_eval
+                .data
+                .iter()
                 .filter(|v| !rhs_eval.data.contains(v))
                 .cloned()
                 .collect();
@@ -1229,9 +1358,10 @@ pub fn eval(
                 return Err((span, "Decode: left argument must be a scalar base"));
             }
             let base = f64::from(lhs_eval.data[0].clone());
-            let result = rhs_eval.data.iter().fold(0.0_f64, |acc, v| {
-                acc * base + f64::from(v.clone())
-            });
+            let result = rhs_eval
+                .data
+                .iter()
+                .fold(0.0_f64, |acc, v| acc * base + f64::from(v.clone()));
             Ok(Val::scalar(Scalar::Integer(result as i64)))
         }
         Expr::Encode { span, lhs, rhs } => {
@@ -1243,7 +1373,11 @@ pub fn eval(
                 return Err((span, "Encode: right argument must be a scalar"));
             }
             let mut n = f64::from(rhs_eval.data[0].clone()) as i64;
-            let bases: Vec<i64> = lhs_eval.data.iter().map(|v| f64::from(v.clone()) as i64).collect();
+            let bases: Vec<i64> = lhs_eval
+                .data
+                .iter()
+                .map(|v| f64::from(v.clone()) as i64)
+                .collect();
             let mut data: Vec<Scalar> = vec![Scalar::Integer(0); bases.len()];
             for i in (0..bases.len()).rev() {
                 if bases[i] != 0 {
@@ -1253,7 +1387,13 @@ pub fn eval(
             }
             Ok(Val::vector(data))
         }
-        Expr::InnerProduct { span, lhs, f, g, rhs } => {
+        Expr::InnerProduct {
+            span,
+            lhs,
+            f,
+            g,
+            rhs,
+        } => {
             debug!("Inner Product");
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
@@ -1266,15 +1406,22 @@ pub fn eval(
                     if lhs_eval.data.len() != rhs_eval.data.len() {
                         return Err((span, "Inner product: lengths must match"));
                     }
-                    let products: Vec<Scalar> = lhs_eval.data.iter().zip(rhs_eval.data.iter())
+                    let products: Vec<Scalar> = lhs_eval
+                        .data
+                        .iter()
+                        .zip(rhs_eval.data.iter())
                         .map(|(a, b)| g_fn(a, b).ok_or((span, "Inner product g failed")))
                         .collect::<Result<Vec<_>, _>>()?;
-                    let result = products.iter().rev().cloned().try_fold(None::<Scalar>, |acc, n| {
-                        match acc {
+                    let result = products
+                        .iter()
+                        .rev()
+                        .cloned()
+                        .try_fold(None::<Scalar>, |acc, n| match acc {
                             None => Some(Some(n)),
                             Some(right) => f_fn(&n, &right).map(Some),
-                        }
-                    }).flatten().ok_or((span, "Inner product f failed"))?;
+                        })
+                        .flatten()
+                        .ok_or((span, "Inner product f failed"))?;
                     Ok(Val::scalar(result))
                 }
                 (2, 2) => {
@@ -1289,10 +1436,15 @@ pub fn eval(
                     for i in 0..m {
                         for j in 0..n {
                             let products: Vec<Scalar> = (0..k)
-                                .map(|p| g_fn(&lhs_eval.data[i * k + p], &rhs_eval.data[p * n + j])
-                                    .ok_or((span, "Inner product g failed")))
+                                .map(|p| {
+                                    g_fn(&lhs_eval.data[i * k + p], &rhs_eval.data[p * n + j])
+                                        .ok_or((span, "Inner product g failed"))
+                                })
                                 .collect::<Result<Vec<_>, _>>()?;
-                            let result = products.iter().cloned().reduce(|a, b| f_fn(&a, &b).unwrap_or(a))
+                            let result = products
+                                .iter()
+                                .cloned()
+                                .reduce(|a, b| f_fn(&a, &b).unwrap_or(a))
                                 .ok_or((span, "Inner product f failed"))?;
                             data.push(result);
                         }
@@ -1307,7 +1459,9 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
 
-            let data: Vec<Scalar> = lhs_eval.data.iter()
+            let data: Vec<Scalar> = lhs_eval
+                .data
+                .iter()
                 .map(|idx| {
                     let i = f64::from(idx.clone()) as usize;
                     if i == 0 || i > rhs_eval.data.len() {
@@ -1332,12 +1486,19 @@ pub fn eval(
             // Gauss-Jordan elimination
             let mut m: Vec<f64> = arg_eval.data.iter().map(|s| f64::from(s.clone())).collect();
             let mut inv = vec![0.0_f64; n * n];
-            for i in 0..n { inv[i * n + i] = 1.0; }
+            for i in 0..n {
+                inv[i * n + i] = 1.0;
+            }
 
             for col in 0..n {
-                let pivot_row = (col..n).max_by(|&a, &b|
-                    m[a * n + col].abs().partial_cmp(&m[b * n + col].abs()).unwrap()
-                ).unwrap();
+                let pivot_row = (col..n)
+                    .max_by(|&a, &b| {
+                        m[a * n + col]
+                            .abs()
+                            .partial_cmp(&m[b * n + col].abs())
+                            .unwrap()
+                    })
+                    .unwrap();
                 if m[pivot_row * n + col].abs() < 1e-12 {
                     return Err((span, "Matrix is singular"));
                 }
@@ -1378,8 +1539,15 @@ pub fn eval(
             }
 
             // Build augmented matrix [A | B]
-            let b_cols = if b_eval.shape.len() == 2 { b_eval.shape[1] } else if b_eval.shape.len() <= 1 { 1 } else {
-                return Err((span, "Matrix divide: left argument must be vector or matrix"));
+            let b_cols = if b_eval.shape.len() == 2 {
+                b_eval.shape[1]
+            } else if b_eval.shape.len() <= 1 {
+                1
+            } else {
+                return Err((
+                    span,
+                    "Matrix divide: left argument must be vector or matrix",
+                ));
             };
             let b_data: Vec<f64> = b_eval.data.iter().map(|s| f64::from(s.clone())).collect();
             let mut aug: Vec<f64> = vec![0.0; n * (n + b_cols)];
@@ -1388,7 +1556,11 @@ pub fn eval(
                     aug[i * (n + b_cols) + j] = f64::from(a_eval.data[i * n + j].clone());
                 }
                 for j in 0..b_cols {
-                    let b_idx = if b_eval.shape.len() == 2 { i * b_cols + j } else { i };
+                    let b_idx = if b_eval.shape.len() == 2 {
+                        i * b_cols + j
+                    } else {
+                        i
+                    };
                     if b_idx < b_data.len() {
                         aug[i * (n + b_cols) + n + j] = b_data[b_idx];
                     }
@@ -1398,9 +1570,14 @@ pub fn eval(
             // Gauss-Jordan elimination
             let w = n + b_cols;
             for col in 0..n {
-                let pivot_row = (col..n).max_by(|&a, &b|
-                    aug[a * w + col].abs().partial_cmp(&aug[b * w + col].abs()).unwrap()
-                ).unwrap();
+                let pivot_row = (col..n)
+                    .max_by(|&a, &b| {
+                        aug[a * w + col]
+                            .abs()
+                            .partial_cmp(&aug[b * w + col].abs())
+                            .unwrap()
+                    })
+                    .unwrap();
                 if aug[pivot_row * w + col].abs() < 1e-12 {
                     return Err((span, "Matrix divide: singular matrix"));
                 }
@@ -1410,11 +1587,15 @@ pub fn eval(
                     aug[pivot_row * w + j] = tmp;
                 }
                 let pivot = aug[col * w + col];
-                for j in 0..w { aug[col * w + j] /= pivot; }
+                for j in 0..w {
+                    aug[col * w + j] /= pivot;
+                }
                 for i in 0..n {
                     if i != col {
                         let factor = aug[i * w + col];
-                        for j in 0..w { aug[i * w + j] -= factor * aug[col * w + j]; }
+                        for j in 0..w {
+                            aug[i * w + j] -= factor * aug[col * w + j];
+                        }
                     }
                 }
             }
@@ -1436,7 +1617,7 @@ pub fn eval(
             debug!("String Literal");
             let raw = lexer.span_str(span);
             // Strip surrounding quotes
-            let inner = &raw[1..raw.len()-1];
+            let inner = &raw[1..raw.len() - 1];
             let data: Vec<Scalar> = inner.chars().map(Scalar::Char).collect();
             if data.is_empty() {
                 Ok(Val::vector(vec![]))
@@ -1466,8 +1647,10 @@ pub fn eval(
             debug!("Vector");
             debug!(?elements, "Vector elements");
 
-            let results: Vec<Result<Val, (Span, &'static str)>> =
-                elements.into_iter().map(|elem| eval(lexer, elem, env)).collect();
+            let results: Vec<Result<Val, (Span, &'static str)>> = elements
+                .into_iter()
+                .map(|elem| eval(lexer, elem, env))
+                .collect();
 
             if let Some(err) = results.iter().find_map(|r| r.as_ref().err()) {
                 error!(?span, "Error in vector evaluation at span: {:?}", err);

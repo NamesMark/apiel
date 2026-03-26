@@ -91,20 +91,24 @@ impl Ord for Scalar {
                     f.partial_cmp(g).unwrap()
                 }
             }
-            (Scalar::Integer(i), Scalar::Float(f)) => (*i as f64).partial_cmp(f).unwrap_or_else(|| {
-                if f.is_nan() {
-                    std::cmp::Ordering::Greater
-                } else {
-                    (*i as f64).partial_cmp(f).unwrap()
-                }
-            }),
-            (Scalar::Float(f), Scalar::Integer(i)) => f.partial_cmp(&(*i as f64)).unwrap_or_else(|| {
-                if f.is_nan() {
-                    std::cmp::Ordering::Less
-                } else {
-                    f.partial_cmp(&(*i as f64)).unwrap()
-                }
-            }),
+            (Scalar::Integer(i), Scalar::Float(f)) => {
+                (*i as f64).partial_cmp(f).unwrap_or_else(|| {
+                    if f.is_nan() {
+                        std::cmp::Ordering::Greater
+                    } else {
+                        (*i as f64).partial_cmp(f).unwrap()
+                    }
+                })
+            }
+            (Scalar::Float(f), Scalar::Integer(i)) => {
+                f.partial_cmp(&(*i as f64)).unwrap_or_else(|| {
+                    if f.is_nan() {
+                        std::cmp::Ordering::Less
+                    } else {
+                        f.partial_cmp(&(*i as f64)).unwrap()
+                    }
+                })
+            }
             (Scalar::Char(a), Scalar::Char(b)) => a.cmp(b),
             (Scalar::Char(_), _) => std::cmp::Ordering::Greater,
             (_, Scalar::Char(_)) => std::cmp::Ordering::Less,
@@ -246,7 +250,9 @@ impl Log for Scalar {
     fn log(&self, base: &Self) -> Option<Self> {
         match (self, base) {
             (Scalar::Nested(_), _) | (_, Scalar::Nested(_)) => None,
-            _ => Some(Scalar::Float(f64::from(self.clone()).log(f64::from(base.clone())))),
+            _ => Some(Scalar::Float(
+                f64::from(self.clone()).log(f64::from(base.clone())),
+            )),
         }
     }
 }
@@ -270,12 +276,18 @@ pub struct Val {
 
 impl Val {
     pub fn scalar(s: Scalar) -> Self {
-        Val { shape: vec![], data: vec![s] }
+        Val {
+            shape: vec![],
+            data: vec![s],
+        }
     }
 
     pub fn vector(data: Vec<Scalar>) -> Self {
         let len = data.len();
-        Val { shape: vec![len], data }
+        Val {
+            shape: vec![len],
+            data,
+        }
     }
 
     pub fn new(shape: Vec<usize>, data: Vec<Scalar>) -> Self {
@@ -287,13 +299,16 @@ impl Val {
     }
 
     pub fn from_f64s(values: &[f64]) -> Self {
-        let data: Vec<Scalar> = values.iter().map(|&v| {
-            if v.fract() == 0.0 && v.abs() < i64::MAX as f64 {
-                Scalar::Integer(v as i64)
-            } else {
-                Scalar::Float(v)
-            }
-        }).collect();
+        let data: Vec<Scalar> = values
+            .iter()
+            .map(|&v| {
+                if v.fract() == 0.0 && v.abs() < i64::MAX as f64 {
+                    Scalar::Integer(v as i64)
+                } else {
+                    Scalar::Float(v)
+                }
+            })
+            .collect();
         if data.len() == 1 {
             Val::scalar(data.into_iter().next().unwrap())
         } else {

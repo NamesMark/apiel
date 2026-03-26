@@ -45,9 +45,9 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use apiel::Env;
     use apiel::apl;
     use apiel::parse::{eval_to_val, format_val};
-    use apiel::Env;
     use std::process::Command;
 
     #[test]
