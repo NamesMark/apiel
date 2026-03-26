@@ -51,52 +51,52 @@ Term -> Result<Expr, ()>:
     ;
 
 MonadicFactor -> Result<Expr, ()>:
-      '+' Factor {
+      '+' Term {
         Ok(Expr::Conjugate{ span: $span, arg: Box::new($2?) })
       }
-    | '-' Factor {
+    | '-' Term {
         Ok(Expr::Negate{ span: $span, arg: Box::new($2?) })
       }
-    | '×' Factor {
+    | '×' Term {
         Ok(Expr::Direction{ span: $span, arg: Box::new($2?) })
       }
-    | '÷' Factor {
+    | '÷' Term {
         Ok(Expr::Reciprocal{ span: $span, arg: Box::new($2?) })
       }
-    | 'EXP' Factor {
+    | 'EXP' Term {
         Ok(Expr::Exp{ span: $span, arg: Box::new($2?) })
       }
-    | 'LOG' Factor {
+    | 'LOG' Term {
         Ok(Expr::NaturalLog{ span: $span, arg: Box::new($2?) })
       }
-    | 'CIRCLE' Factor {
+    | 'CIRCLE' Term {
         Ok(Expr::PiMultiple{ span: $span, arg: Box::new($2?) })
       }
-    | '!' Factor {
+    | '!' Term {
         Ok(Expr::Factorial{ span: $span, arg: Box::new($2?) })
       }
-    | '?' Factor {
+    | '?' Term {
         Ok(Expr::Roll{ span: $span, arg: Box::new($2?) })
       }
-    | '|' Factor {
+    | '|' Term {
         Ok(Expr::Magnitude{ span: $span, arg: Box::new($2?) })
       }
-    | '⌈' Factor {
+    | '⌈' Term {
         Ok(Expr::Ceil{ span: $span, arg: Box::new($2?) })
       }
-    | '⌊' Factor {
+    | '⌊' Term {
         Ok(Expr::Floor{ span: $span, arg: Box::new($2?) })
       }
-    | 'MAX' Factor {
+    | 'MAX' Term {
         Ok(Expr::MonadicMax{ span: $span, arg: Box::new($2?) })
       }
-    | 'MIN' Factor {
+    | 'MIN' Term {
         Ok(Expr::MonadicMin{ span: $span, arg: Box::new($2?) })
       }
-    | 'IOTA' Factor {
+    | 'IOTA' Term {
         Ok(Expr::GenIndex{ span: $span, arg: Box::new($2?) })
       }
-    | 'IOTA_U' Factor {
+    | 'IOTA_U' Term {
         Ok(Expr::Where{ span: $span, arg: Box::new($2?) })
       }
     ;
