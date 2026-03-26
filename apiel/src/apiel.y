@@ -37,6 +37,9 @@ Term -> Result<Expr, ()>:
     | Factor '⌊' Term {
         Ok(Expr::Min{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'LOG' Term {
+        Ok(Expr::Log{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     //| Factor 'IOTA' Term {
     //    Ok(Expr::IndexOf{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
     //  }
