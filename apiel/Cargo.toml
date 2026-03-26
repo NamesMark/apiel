@@ -8,8 +8,6 @@ repository = "https://github.com/NamesMark/apiel/apiel"
 license = "MIT"
 build = "build.rs"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [build-dependencies]
 cfgrammar = "0.13.10"
 lrlex = "0.13.10"
