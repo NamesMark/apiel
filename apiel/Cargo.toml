@@ -2,7 +2,7 @@
 name = "apiel"
 version = "0.1.0"
 authors = ["Mark Firman <markfirmanwork@gmail.com>"]
-edition = "2021"
+edition = "2024"
 homepage = "https://github.com/NamesMark/apiel"
 repository = "https://github.com/NamesMark/apiel/apiel"
 license = "MIT"
@@ -11,18 +11,18 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-cfgrammar = "0.13.4"
-lrlex = "0.13.4"
-lrpar = "0.13.4"
+cfgrammar = "0.13.10"
+lrlex = "0.13.10"
+lrpar = "0.13.10"
 
 [dependencies]
-cfgrammar = "0.13.4"
+cfgrammar = "0.13.10"
 conv = "0.3.3"
 eyre = "0.6.12"
-lrlex = "0.13.4"
-lrpar = "0.13.4"
-num-traits = "0.2.18"
+lrlex = "0.13.10"
+lrpar = "0.13.10"
+num-traits = "0.2.19"
 rand = "0.8.5"
-tracing = "0.1.40"
+tracing = "0.1.44"
 
 [features]
