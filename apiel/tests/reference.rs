@@ -275,6 +275,14 @@ fn variables_and_assignment() {
     assert_apl_env("a × b", &mut env, &[5.0, 10.0, 15.0], "scalar times vector");
     assert_apl_env("c←a+10", &mut env, &[15.0], "assign computed");
     assert_apl_env("⍳ a", &mut env, &[1.0, 2.0, 3.0, 4.0, 5.0], "iota of variable");
+
+    // Named functions
+    assert_apl_env("double←{⍵×2}", &mut env, &[0.0], "assign dfn");
+    assert_apl_env("double 5", &mut env, &[10.0], "call named monadic");
+    assert_apl_env("double 1 2 3", &mut env, &[2.0, 4.0, 6.0], "call named monadic vector");
+    assert_apl_env("add←{⍺+⍵}", &mut env, &[0.0], "assign dyadic dfn");
+    assert_apl_env("10 add 20", &mut env, &[30.0], "call named dyadic");
+    assert_apl_env("1 2 3 add 4 5 6", &mut env, &[5.0, 7.0, 9.0], "call named dyadic vector");
 }
 
 #[test]

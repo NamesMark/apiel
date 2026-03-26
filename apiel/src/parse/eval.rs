@@ -8,16 +8,33 @@ use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 use rand::Rng;
 use tracing::{debug, error};
 
+#[derive(Debug, Clone)]
+pub struct StoredDfn {
+    pub body: Rc<Expr>,
+    pub source: String,  // original input line for correct span resolution
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct Env {
     pub vars: HashMap<String, Val>,
-    pub fns: HashMap<String, Rc<Expr>>,  // name → dfn body AST (Rc for cheap cloning)
+    pub fns: HashMap<String, StoredDfn>,
 }
 
 impl Env {
     pub fn new() -> Self {
         Self::default()
     }
+}
+
+fn eval_stored_dfn(
+    stored: &StoredDfn,
+    env: &mut Env,
+) -> Result<Val, (Span, String)> {
+    use crate::parse::apiel_l;
+    let lexerdef = apiel_l::lexerdef();
+    let lex = lexerdef.lexer(&stored.source);
+    eval(&lex, (*stored.body).clone(), env)
+        .map_err(|(span, msg)| (span, msg.to_string()))
 }
 
 fn apply_dyadic_operation<F>(
@@ -920,34 +937,37 @@ pub fn eval(
         Expr::Alpha { span } => {
             env.vars.get("⍺").cloned().ok_or((span, "⍺ used outside of a dfn"))
         }
-        Expr::MonadicDfn { body, rhs, .. } => {
+        Expr::MonadicDfn { span, body, rhs } => {
             debug!("Monadic Dfn");
             let rhs_val = eval(lexer, *rhs, env)?;
             let body_rc = Rc::new(*body);
+            let stored = StoredDfn { body: Rc::clone(&body_rc), source: lexer.span_str(span).to_string() };
             let mut dfn_env = env.clone();
             dfn_env.vars.insert("⍵".to_string(), rhs_val);
-            dfn_env.fns.insert("∇".to_string(), Rc::clone(&body_rc));
+            dfn_env.fns.insert("∇".to_string(), stored);
             eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
-        Expr::DyadicDfn { lhs, body, rhs, .. } => {
+        Expr::DyadicDfn { span, lhs, body, rhs } => {
             debug!("Dyadic Dfn");
             let lhs_val = eval(lexer, *lhs, env)?;
             let rhs_val = eval(lexer, *rhs, env)?;
             let body_rc = Rc::new(*body);
+            let stored = StoredDfn { body: Rc::clone(&body_rc), source: lexer.span_str(span).to_string() };
             let mut dfn_env = env.clone();
             dfn_env.vars.insert("⍺".to_string(), lhs_val);
             dfn_env.vars.insert("⍵".to_string(), rhs_val);
-            dfn_env.fns.insert("∇".to_string(), Rc::clone(&body_rc));
+            dfn_env.fns.insert("∇".to_string(), stored);
             eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
         Expr::SelfCall { span, arg } => {
             debug!("Self-reference ∇");
             let arg_val = eval(lexer, *arg, env)?;
-            let body_rc = env.fns.get("∇").cloned()
+            let stored = env.fns.get("∇").cloned()
                 .ok_or((span, "∇ used outside of a dfn"))?;
             let mut self_env = env.clone();
             self_env.vars.insert("⍵".to_string(), arg_val);
-            eval(lexer, (*body_rc).clone(), &mut self_env)
+            eval_stored_dfn(&stored, &mut self_env)
+                .map_err(|(_span, msg)| (span, Box::leak(msg.into_boxed_str()) as &'static str))
         }
         Expr::DfnGuard { cond, result, rest, .. } => {
             debug!("Dfn Guard");
@@ -968,10 +988,35 @@ pub fn eval(
             eval(lexer, *first, env)?;
             eval(lexer, *rest, env)
         }
-        Expr::AssignDfn { name, body, .. } => {
+        Expr::AssignDfn { span, name, body } => {
             debug!("Assign Dfn");
-            env.fns.insert(name, Rc::new(*body));
+            let stored = StoredDfn { body: Rc::new(*body), source: lexer.span_str(span).to_string() };
+            env.fns.insert(name, stored);
             Ok(Val::scalar(Scalar::Integer(0)))
+        }
+        Expr::NamedMonadic { span, name, rhs } => {
+            debug!("Named Monadic: {name}");
+            let stored = env.fns.get(&name).cloned()
+                .ok_or((span, "Undefined function"))?;
+            let rhs_val = eval(lexer, *rhs, env)?;
+            let mut dfn_env = env.clone();
+            dfn_env.vars.insert("⍵".to_string(), rhs_val);
+            dfn_env.fns.insert("∇".to_string(), stored.clone());
+            eval_stored_dfn(&stored, &mut dfn_env)
+                .map_err(|(_span, msg)| (span, Box::leak(msg.into_boxed_str()) as &'static str))
+        }
+        Expr::NamedDyadic { span, lhs, name, rhs } => {
+            debug!("Named Dyadic: {name}");
+            let stored = env.fns.get(&name).cloned()
+                .ok_or((span, "Undefined function"))?;
+            let lhs_val = eval(lexer, *lhs, env)?;
+            let rhs_val = eval(lexer, *rhs, env)?;
+            let mut dfn_env = env.clone();
+            dfn_env.vars.insert("⍺".to_string(), lhs_val);
+            dfn_env.vars.insert("⍵".to_string(), rhs_val);
+            dfn_env.fns.insert("∇".to_string(), stored.clone());
+            eval_stored_dfn(&stored, &mut dfn_env)
+                .map_err(|(_span, msg)| (span, Box::leak(msg.into_boxed_str()) as &'static str))
         }
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");

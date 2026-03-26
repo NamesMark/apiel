@@ -1,6 +1,7 @@
 %start Expr
 %avoid_insert "INT"
 %expect-unused Unmatched "UNMATCHED"
+%expect 1
 %%
 Expr -> Result<Expr, ()>:
     Term { $1 }
@@ -117,6 +118,12 @@ Term -> Result<Expr, ()>:
       }
     | '{' DfnBody '}' Term {
         Ok(Expr::MonadicDfn{ span: $span, body: Box::new($2?), rhs: Box::new($4?) })
+      }
+    | 'NAME' Factor {
+        Ok(Expr::NamedMonadic{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($2?) })
+      }
+    | Factor 'NAME' Factor {
+        Ok(Expr::NamedDyadic{ span: $span, lhs: Box::new($1?), name: $2.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($3?) })
       }
     | MonadicFactor {
         Ok($1?)
@@ -498,6 +505,17 @@ pub enum Expr {
         span: Span,
         name: String,
         body: Box<Expr>,
+    },
+    NamedMonadic {
+        span: Span,
+        name: String,
+        rhs: Box<Expr>,
+    },
+    NamedDyadic {
+        span: Span,
+        lhs: Box<Expr>,
+        name: String,
+        rhs: Box<Expr>,
     },
     OuterProduct {
         span: Span,
