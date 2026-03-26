@@ -1,6 +1,7 @@
 //! Integration tests verified against Dyalog APL 19.0.
 
 use apiel::{apl, Env};
+use apiel::parse::{eval_to_val, format_val};
 
 fn assert_apl(expr: &str, expected: &[f64], desc: &str) {
     let result = apl!(expr).unwrap_or_else(|e| panic!("[{desc}] `{expr}` failed: {e}"));
@@ -251,6 +252,9 @@ fn reference_tests() {
         // Encode (⊤)
         ("2 2 2 ⊤ 5",                  &[1.0, 0.0, 1.0],                     "encode binary"),
         ("10 10 10 ⊤ 123",              &[1.0, 2.0, 3.0],                     "encode decimal"),
+        // Index (⌷)
+        ("2 ⌷ 10 20 30 40 50",          &[20.0],                               "index scalar"),
+        ("1 3 5 ⌷ 10 20 30 40 50",      &[10.0, 30.0, 50.0],                  "index vector"),
     ];
 
     let mut failures = Vec::new();
@@ -338,4 +342,34 @@ fn recursive_dfns() {
         .unwrap()
         .join()
         .unwrap();
+}
+
+#[test]
+fn strings_and_chars() {
+    use apiel::parse::{eval_to_val, format_val};
+    let mut env = Env::new();
+
+    let val = eval_to_val("'hello'", &mut env).unwrap();
+    assert_eq!(format_val(&val), "hello");
+    assert_eq!(val.shape, vec![5]);
+
+    let val = eval_to_val("⌽ 'hello'", &mut env).unwrap();
+    assert_eq!(format_val(&val), "olleh");
+
+    let val = eval_to_val("3 ↑ 'hello'", &mut env).unwrap();
+    assert_eq!(format_val(&val), "hel");
+
+    let val = eval_to_val("'hello' , ' world'", &mut env).unwrap();
+    assert_eq!(format_val(&val), "hello world");
+
+    // String equality returns numeric
+    assert_apl("'hello' = 'hxllo'", &[1.0, 0.0, 1.0, 1.0, 1.0], "string equality");
+}
+
+#[test]
+fn matrix_inverse() {
+    let mut env = Env::new();
+    let val = eval_to_val("⌹ 1 1 ⍴ 4", &mut env).unwrap();
+    let v: f64 = val.data[0].into();
+    assert!((v - 0.25).abs() < 1e-9, "1x1 inverse: got {v}");
 }

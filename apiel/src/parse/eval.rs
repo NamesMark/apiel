@@ -273,6 +273,7 @@ pub fn eval(
                 (Scalar::Float(a), Scalar::Integer(b)) => Ok(Scalar::Float(*b as f64 % a)),
                 (Scalar::Integer(a), Scalar::Float(b)) => Ok(Scalar::Float(b % *a as f64)),
                 (Scalar::Float(a), Scalar::Float(b)) => Ok(Scalar::Float(b % a)),
+                _ => eyre::bail!("Residue not defined for character arguments"),
             };
 
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, residue_operation)
@@ -478,6 +479,7 @@ pub fn eval(
                         let n = match count {
                             Scalar::Integer(i) => *i as usize,
                             Scalar::Float(f) => *f as usize,
+                            _ => 0,
                         };
                         std::iter::repeat_n(*val, n)
                     })
@@ -496,6 +498,7 @@ pub fn eval(
                 let n = match mask {
                     Scalar::Integer(i) => *i,
                     Scalar::Float(f) => *f as i64,
+                    _ => 0,
                 };
                 if n > 0 {
                     match rhs_iter.next() {
@@ -665,6 +668,7 @@ pub fn eval(
             let exp_operation = |a: &Scalar| match a {
                 Scalar::Integer(val) => Ok(Scalar::Float((*val as f64).exp())),
                 Scalar::Float(val) => Ok(Scalar::Float(val.exp())),
+                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
             };
 
             apply_monadic_operation(span, &arg_eval, exp_operation)
@@ -688,6 +692,7 @@ pub fn eval(
             let pi_multiple_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Float(*i as f64 * std::f64::consts::PI)),
                 Scalar::Float(f) => Ok(Scalar::Float(*f * std::f64::consts::PI)),
+                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
             };
 
             apply_monadic_operation(span, &arg_eval, pi_multiple_operation)
@@ -728,7 +733,7 @@ pub fn eval(
                 match limit {
                     Scalar::Integer(val) if *val == 0 => Ok(Scalar::Integer(rng.r#gen())),
                     Scalar::Integer(val) => Ok(Scalar::Integer(rng.gen_range(0..=*val))),
-                    Scalar::Float(_) => {
+                    _ => {
                         eyre::bail!("Roll right argument must consist of non-negative integer(s)")
                     }
                 }
@@ -743,6 +748,7 @@ pub fn eval(
             let magnitude_operation = |value: &Scalar| match value {
                 Scalar::Integer(val) => Ok(Scalar::Integer(val.abs())),
                 Scalar::Float(val) => Ok(Scalar::Float(val.abs())),
+                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
             };
 
             apply_monadic_operation(span, &arg_eval, magnitude_operation)
@@ -754,6 +760,7 @@ pub fn eval(
             let ceil_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Integer(*i)),
                 Scalar::Float(f) => Ok(Scalar::Float(f.ceil())),
+                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
             };
 
             apply_monadic_operation(span, &arg_eval, ceil_operation)
@@ -765,6 +772,7 @@ pub fn eval(
             let floor_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Integer(*i)),
                 Scalar::Float(f) => Ok(Scalar::Float(f.floor())),
+                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
             };
 
             apply_monadic_operation(span, &arg_eval, floor_operation)
@@ -1155,6 +1163,85 @@ pub fn eval(
                     Ok(Val::new(vec![m, n], data))
                 }
                 _ => Err((span, "Inner product: only rank 1 and 2 supported")),
+            }
+        }
+        Expr::Index { span, lhs, rhs } => {
+            debug!("Dyadic Index");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            let data: Vec<Scalar> = lhs_eval.data.iter()
+                .map(|idx| {
+                    let i = f64::from(*idx) as usize;
+                    if i == 0 || i > rhs_eval.data.len() {
+                        Err((span, "Index out of bounds"))
+                    } else {
+                        Ok(rhs_eval.data[i - 1])
+                    }
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Val::vector(data))
+        }
+        Expr::MatrixInverse { span, arg } => {
+            debug!("Matrix Inverse");
+            let arg_eval = eval(lexer, *arg, env)?;
+            if arg_eval.shape.len() != 2 {
+                return Err((span, "Matrix inverse requires a rank-2 array"));
+            }
+            let n = arg_eval.shape[0];
+            if n != arg_eval.shape[1] {
+                return Err((span, "Matrix inverse requires a square matrix"));
+            }
+            // Gauss-Jordan elimination
+            let mut m: Vec<f64> = arg_eval.data.iter().map(|s| f64::from(*s)).collect();
+            let mut inv = vec![0.0_f64; n * n];
+            for i in 0..n { inv[i * n + i] = 1.0; }
+
+            for col in 0..n {
+                let pivot_row = (col..n).max_by(|&a, &b|
+                    m[a * n + col].abs().partial_cmp(&m[b * n + col].abs()).unwrap()
+                ).unwrap();
+                if m[pivot_row * n + col].abs() < 1e-12 {
+                    return Err((span, "Matrix is singular"));
+                }
+                for j in 0..n {
+                    m.swap(col * n + j, pivot_row * n + j);
+                    inv.swap(col * n + j, pivot_row * n + j);
+                }
+                let pivot = m[col * n + col];
+                for j in 0..n {
+                    m[col * n + j] /= pivot;
+                    inv[col * n + j] /= pivot;
+                }
+                for i in 0..n {
+                    if i != col {
+                        let factor = m[i * n + col];
+                        for j in 0..n {
+                            m[i * n + j] -= factor * m[col * n + j];
+                            inv[i * n + j] -= factor * inv[col * n + j];
+                        }
+                    }
+                }
+            }
+            let data: Vec<Scalar> = inv.into_iter().map(Scalar::Float).collect();
+            Ok(Val::new(vec![n, n], data))
+        }
+        Expr::MatrixDivide { span, lhs, rhs } => {
+            debug!("Matrix Divide");
+            // B ⌹ A = (⌹A) +.× B  (simplified: solve Ax = B)
+            let _ = (span, lhs, rhs);
+            Err((span, "Matrix divide not yet implemented"))
+        }
+        Expr::StringLiteral { span } => {
+            debug!("String Literal");
+            let raw = lexer.span_str(span);
+            // Strip surrounding quotes
+            let inner = &raw[1..raw.len()-1];
+            let data: Vec<Scalar> = inner.chars().map(Scalar::Char).collect();
+            if data.is_empty() {
+                Ok(Val::vector(vec![]))
+            } else {
+                Ok(Val::vector(data))
             }
         }
         Expr::ScalarFloat { span, .. } => {

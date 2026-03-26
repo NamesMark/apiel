@@ -1,6 +1,7 @@
 use std::io::{self, BufRead, Write};
 
-use apiel::{apl, Env};
+use apiel::Env;
+use apiel::parse::{eval_to_val, format_val};
 
 fn main() {
     tracing_subscriber::fmt().init();
@@ -32,8 +33,8 @@ fn main() {
                 if line.trim().is_empty() {
                     continue;
                 }
-                match apl!(&line, &mut env) {
-                    Ok(result) => println!("{}", format_result(&result)),
+                match eval_to_val(&line, &mut env) {
+                    Ok(val) => println!("{}", format_val(&val)),
                     Err(err) => eprintln!("ERROR: {err}"),
                 }
             }
@@ -42,24 +43,11 @@ fn main() {
     }
 }
 
-fn format_result(result: &[f64]) -> String {
-    result
-        .iter()
-        .map(|v| {
-            if v.fract() == 0.0 {
-                format!("{}", *v as i64)
-            } else {
-                format!("{v}")
-            }
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 #[cfg(test)]
 mod tests {
-    use super::format_result;
     use apiel::apl;
+    use apiel::parse::{eval_to_val, format_val};
+    use apiel::Env;
     use std::process::Command;
 
     #[test]
@@ -70,11 +58,13 @@ mod tests {
     }
 
     #[test]
-    fn format_integers_without_decimal() {
-        assert_eq!(format_result(&[1.0, 2.0, 3.0]), "1 2 3");
-        assert_eq!(format_result(&[7.0]), "7");
-        assert_eq!(format_result(&[3.14]), "3.14");
-        assert_eq!(format_result(&[1.0, 2.5, 3.0]), "1 2.5 3");
+    fn format_output() {
+        let mut env = Env::new();
+        let val = eval_to_val("1 2 3", &mut env).unwrap();
+        assert_eq!(format_val(&val), "1 2 3");
+
+        let val = eval_to_val("'hello'", &mut env).unwrap();
+        assert_eq!(format_val(&val), "hello");
     }
 
     #[test]

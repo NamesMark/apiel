@@ -6,6 +6,7 @@ use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 pub enum Scalar {
     Float(f64),
     Integer(i64),
+    Char(char),
 }
 
 impl Scalar {
@@ -15,6 +16,7 @@ impl Scalar {
             (Scalar::Float(f), Scalar::Float(g)) => (Scalar::Float(*f), Scalar::Float(*g)),
             (Scalar::Integer(i), Scalar::Float(f)) => (Scalar::Float(*i as f64), Scalar::Float(*f)),
             (Scalar::Float(f), Scalar::Integer(i)) => (Scalar::Float(*f), Scalar::Float(*i as f64)),
+            _ => (*a, *b),
         }
     }
 }
@@ -35,6 +37,7 @@ impl TryFrom<Scalar> for usize {
                     Err("Float is not a whole number or is negative")
                 }
             }
+            Scalar::Char(_) => Err("Cannot convert char to usize"),
         }
     }
 }
@@ -44,6 +47,7 @@ impl From<Scalar> for f64 {
         match value {
             Scalar::Integer(val) => val as f64,
             Scalar::Float(val) => val,
+            Scalar::Char(c) => c as u32 as f64,
         }
     }
 }
@@ -55,6 +59,8 @@ impl PartialEq for Scalar {
             (Scalar::Float(f), Scalar::Float(g)) => f == g,
             (Scalar::Integer(i), Scalar::Float(f)) => *i as f64 == *f,
             (Scalar::Float(f), Scalar::Integer(i)) => *f == *i as f64,
+            (Scalar::Char(a), Scalar::Char(b)) => a == b,
+            _ => false,
         }
     }
 }
@@ -96,6 +102,9 @@ impl Ord for Scalar {
                     f.partial_cmp(&(*i as f64)).unwrap()
                 }
             }),
+            (Scalar::Char(a), Scalar::Char(b)) => a.cmp(b),
+            (Scalar::Char(_), _) => std::cmp::Ordering::Greater,
+            (_, Scalar::Char(_)) => std::cmp::Ordering::Less,
         }
     }
 }
@@ -210,6 +219,7 @@ impl CheckedPow for Scalar {
         match self {
             Scalar::Integer(i) => i.checked_pow(other as u32).map(Scalar::Integer),
             Scalar::Float(f) => Some(Scalar::Float(num_traits::pow::pow(*f, other))),
+            Scalar::Char(_) => None,
         }
     }
 
@@ -217,6 +227,7 @@ impl CheckedPow for Scalar {
         match self {
             Scalar::Integer(i) => Some(Scalar::Float((*i as f64).powf(other))),
             Scalar::Float(f) => Some(Scalar::Float(f.powf(other))),
+            Scalar::Char(_) => None,
         }
     }
 }
@@ -236,6 +247,7 @@ impl CheckedNeg for Scalar {
         match self {
             Scalar::Integer(i) => i.checked_neg().map(Scalar::Integer),
             Scalar::Float(f) => Some(Scalar::Float(-f)),
+            Scalar::Char(_) => None,
         }
     }
 }
