@@ -1,6 +1,6 @@
 //! Integration tests verified against Dyalog APL 19.0.
 
-use apiel::apl;
+use apiel::{apl, Env};
 
 fn assert_apl(expr: &str, expected: &[f64], desc: &str) {
     let result = apl!(expr).unwrap_or_else(|e| panic!("[{desc}] `{expr}` failed: {e}"));
@@ -203,6 +203,13 @@ fn reference_tests() {
         ("⍋ 3 1 4 1 5 9",              &[2.0,4.0,1.0,3.0,5.0,6.0],           "grade up"),
         ("⍒ 3 1 4 1 5 9",              &[6.0,5.0,3.0,1.0,2.0,4.0],           "grade down"),
         ("⍋ 5 4 3 2 1",                 &[5.0,4.0,3.0,2.0,1.0],              "grade up reversed"),
+        // Dfns (monadic)
+        ("{⍵+1} 5",                     &[6.0],                                 "dfn monadic simple"),
+        ("{⍵×⍵} 1 2 3 4 5",             &[1.0,4.0,9.0,16.0,25.0],             "dfn monadic square"),
+        ("{+/⍵} 1 2 3 4 5",             &[15.0],                                "dfn monadic reduce"),
+        // Dfns (dyadic)
+        ("2 {⍺+⍵} 3",                  &[5.0],                                 "dfn dyadic add"),
+        ("10 {⍺×⍵} 1 2 3",             &[10.0, 20.0, 30.0],                   "dfn dyadic mul vector"),
     ];
 
     let mut failures = Vec::new();
@@ -224,4 +231,32 @@ fn reference_tests() {
             failures.join("\n")
         );
     }
+}
+
+fn assert_apl_env(expr: &str, env: &mut Env, expected: &[f64], desc: &str) {
+    let result = apl!(expr, env).unwrap_or_else(|e| panic!("[{desc}] `{expr}` failed: {e}"));
+    assert_eq!(
+        result.len(),
+        expected.len(),
+        "[{desc}] `{expr}`: length mismatch — got {result:?}, expected {expected:?}"
+    );
+    for (i, (got, exp)) in result.iter().zip(expected).enumerate() {
+        assert!(
+            (got - exp).abs() < 1e-9,
+            "[{desc}] `{expr}` element [{i}]: got {got}, expected {exp}"
+        );
+    }
+}
+
+#[test]
+fn variables_and_assignment() {
+    let mut env = Env::new();
+
+    assert_apl_env("a←5", &mut env, &[5.0], "assign scalar");
+    assert_apl_env("a", &mut env, &[5.0], "read scalar");
+    assert_apl_env("a + 3", &mut env, &[8.0], "use in expr");
+    assert_apl_env("b←1 2 3", &mut env, &[1.0, 2.0, 3.0], "assign vector");
+    assert_apl_env("a × b", &mut env, &[5.0, 10.0, 15.0], "scalar times vector");
+    assert_apl_env("c←a+10", &mut env, &[15.0], "assign computed");
+    assert_apl_env("⍳ a", &mut env, &[1.0, 2.0, 3.0, 4.0, 5.0], "iota of variable");
 }

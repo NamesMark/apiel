@@ -1,11 +1,12 @@
 use std::io::{self, BufRead, Write};
 
-use apiel::apl;
+use apiel::{apl, Env};
 
 fn main() {
     tracing_subscriber::fmt().init();
 
     let stdin = io::stdin();
+    let mut env = Env::new();
 
     println!(
         r#"
@@ -31,7 +32,7 @@ fn main() {
                 if line.trim().is_empty() {
                     continue;
                 }
-                match apl!(&line) {
+                match apl!(&line, &mut env) {
                     Ok(result) => println!("{}", format_result(&result)),
                     Err(err) => eprintln!("ERROR: {err}"),
                 }

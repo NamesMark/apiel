@@ -8,9 +8,14 @@ use lrpar::{lrpar_mod, Lexeme, Lexer, NonStreamingLexer};
 lrlex_mod!("apiel.l");
 lrpar_mod!("apiel.y");
 
-use apiel_y::Expr;
+pub use eval::Env;
 
 pub fn parse_and_evaluate(line: &str) -> Result<Vec<f64>, String> {
+    let mut env = Env::new();
+    parse_and_evaluate_with_env(line, &mut env)
+}
+
+pub fn parse_and_evaluate_with_env(line: &str, env: &mut Env) -> Result<Vec<f64>, String> {
     let lexerdef = apiel_l::lexerdef();
     let lexer = lexerdef.lexer(line);
 
@@ -35,7 +40,7 @@ pub fn parse_and_evaluate(line: &str) -> Result<Vec<f64>, String> {
     }
 
     if let Some(Ok(r)) = res {
-        match eval::eval(&lexer, r) {
+        match eval::eval(&lexer, r, env) {
             Ok(val) => Ok(val.data.into_iter().map(f64::from).collect()),
             Err((span, msg)) => {
                 let ((line, col), _) = lexer.line_col(span);

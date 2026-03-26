@@ -1,10 +1,13 @@
+use std::collections::HashMap;
 use super::*;
-use crate::parse::apiel_y::Operator;
+use crate::parse::apiel_y::{Expr, Operator};
 use val::{Scalar, Val, CheckedPow, Log};
 use eyre::{OptionExt, Result};
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 use rand::Rng;
 use tracing::{debug, error};
+
+pub type Env = HashMap<String, Val>;
 
 fn apply_dyadic_operation<F>(
     span: Span,
@@ -74,12 +77,13 @@ fn get_operator_fn(op: Operator) -> fn(&Scalar, &Scalar) -> Option<Scalar> {
 pub fn eval(
     lexer: &dyn NonStreamingLexer<DefaultLexerTypes<u32>>,
     e: Expr,
+    env: &mut Env,
 ) -> Result<Val, (Span, &'static str)> {
     match e {
         Expr::Add { span, lhs, rhs } => {
             debug!("Dyadic Add");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let add_operation = |a: &Scalar, b: &Scalar| {
                 a.checked_add(b)
@@ -90,8 +94,8 @@ pub fn eval(
         }
         Expr::Sub { span, lhs, rhs } => {
             debug!("Dyadic Sub");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let sub_operation = |a: &Scalar, b: &Scalar| {
                 a.checked_sub(b)
@@ -102,8 +106,8 @@ pub fn eval(
         }
         Expr::Mul { span, lhs, rhs } => {
             debug!("Dyadic Mul");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let mul_operation = |a: &Scalar, b: &Scalar| {
                 a.checked_mul(b)
@@ -114,8 +118,8 @@ pub fn eval(
         }
         Expr::Div { span, lhs, rhs } => {
             debug!("Dyadic Div");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let div_operation = |a: &Scalar, b: &Scalar| {
                 a.checked_div(b)
@@ -126,8 +130,8 @@ pub fn eval(
         }
         Expr::Power { span, lhs, rhs } => {
             debug!("Dyadic Power");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let pow_operation = |a: &Scalar, b: &Scalar| match TryInto::<usize>::try_into(*b) {
                 Ok(int_exp) => a.checked_pow(int_exp).ok_or_eyre(format!(
@@ -142,8 +146,8 @@ pub fn eval(
         }
         Expr::Log { span, lhs, rhs } => {
             debug!("Dyadic Log");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |base: &Scalar, value: &Scalar| {
                 value.log(base).ok_or_eyre(format!(
@@ -153,8 +157,8 @@ pub fn eval(
         }
         Expr::Min { span, lhs, rhs } => {
             debug!("Dyadic Min");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let min_operation = |a: &Scalar, b: &Scalar| {
                 let result = match a.cmp(b) {
@@ -169,8 +173,8 @@ pub fn eval(
         }
         Expr::Max { span, lhs, rhs } => {
             debug!("Dyadic Max");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let max_operation = |a: &Scalar, b: &Scalar| {
                 let result = match a.cmp(b) {
@@ -185,8 +189,8 @@ pub fn eval(
         }
         Expr::Binomial { span, lhs, rhs } => {
             debug!("Dyadic Binomial");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             // APL: k ! n = C(n, k) = n! / (k! * (n-k)!)
             // lhs is k, rhs is n
@@ -212,8 +216,8 @@ pub fn eval(
         }
         Expr::Deal { span, lhs, rhs } => {
             debug!("Dyadic Deal");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             if !lhs_eval.is_scalar() || !rhs_eval.is_scalar() {
                 return Err((span, "Deal operation is only available for two scalars"));
@@ -233,8 +237,8 @@ pub fn eval(
         Expr::Residue { span, lhs, rhs } => {
             debug!("Dyadic Residue");
             // APL: B|A means A mod B (rhs mod lhs)
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let residue_operation = |a: &Scalar, b: &Scalar| match (&a, &b) {
                 (Scalar::Integer(a), Scalar::Integer(b)) => Ok(Scalar::Integer(b % a)),
@@ -249,8 +253,8 @@ pub fn eval(
             debug!("Dyadic Index Of");
             // A ⍳ B — for each element of B, find its 1-based position in A.
             // If not found, returns 1 + length of A.
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             let _ = span;
             let not_found = lhs_eval.data.len() as i64 + 1;
 
@@ -270,8 +274,8 @@ pub fn eval(
             debug!("Dyadic Interval Index");
             // A ⍸ B — for each element of B, count how many elements of A are ≤ it.
             // A must be sorted ascending.
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             let _ = span;
 
             let data = rhs_eval.data.iter()
@@ -285,8 +289,8 @@ pub fn eval(
         }
         Expr::Reshape { span, lhs, rhs } => {
             debug!("Dyadic Reshape");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let new_shape: Vec<usize> = lhs_eval.data.iter()
                 .map(|s| usize::try_from(*s).map_err(|_| (span, "Reshape dimensions must be non-negative integers")))
@@ -303,8 +307,8 @@ pub fn eval(
         }
         Expr::Catenate { span, lhs, rhs } => {
             debug!("Dyadic Catenate");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             let _ = span;
 
             let mut data = lhs_eval.data;
@@ -313,8 +317,8 @@ pub fn eval(
         }
         Expr::Rotate { span, lhs, rhs } => {
             debug!("Dyadic Rotate");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             if !lhs_eval.is_scalar() {
                 return Err((span, "Rotate left argument must be a scalar integer"));
@@ -335,56 +339,56 @@ pub fn eval(
         }
         Expr::Equal { span, lhs, rhs } => {
             debug!("Dyadic Equal");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 Ok(Scalar::Integer(if a == b { 1 } else { 0 }))
             })
         }
         Expr::NotEqual { span, lhs, rhs } => {
             debug!("Dyadic Not Equal");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 Ok(Scalar::Integer(if a != b { 1 } else { 0 }))
             })
         }
         Expr::LessThan { span, lhs, rhs } => {
             debug!("Dyadic Less Than");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 Ok(Scalar::Integer(if a < b { 1 } else { 0 }))
             })
         }
         Expr::GreaterThan { span, lhs, rhs } => {
             debug!("Dyadic Greater Than");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 Ok(Scalar::Integer(if a > b { 1 } else { 0 }))
             })
         }
         Expr::LessEqual { span, lhs, rhs } => {
             debug!("Dyadic Less Equal");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 Ok(Scalar::Integer(if a <= b { 1 } else { 0 }))
             })
         }
         Expr::GreaterEqual { span, lhs, rhs } => {
             debug!("Dyadic Greater Equal");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 Ok(Scalar::Integer(if a >= b { 1 } else { 0 }))
             })
         }
         Expr::And { span, lhs, rhs } => {
             debug!("Dyadic And");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
                 let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
@@ -393,8 +397,8 @@ pub fn eval(
         }
         Expr::Or { span, lhs, rhs } => {
             debug!("Dyadic Or");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
                 let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
@@ -403,8 +407,8 @@ pub fn eval(
         }
         Expr::Nand { span, lhs, rhs } => {
             debug!("Dyadic Nand");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
                 let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
@@ -413,8 +417,8 @@ pub fn eval(
         }
         Expr::Nor { span, lhs, rhs } => {
             debug!("Dyadic Nor");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, |a, b| {
                 let a = if *a != Scalar::Integer(0) { 1 } else { 0 };
                 let b = if *b != Scalar::Integer(0) { 1 } else { 0 };
@@ -423,8 +427,8 @@ pub fn eval(
         }
         Expr::Replicate { span, lhs, rhs } => {
             debug!("Dyadic Replicate");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             if lhs_eval.is_scalar() {
                 // Scalar left: repeat each element n times
@@ -455,8 +459,8 @@ pub fn eval(
         }
         Expr::Take { span, lhs, rhs } => {
             debug!("Dyadic Take");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             if !lhs_eval.is_scalar() {
                 return Err((span, "Take left argument must be a scalar integer"));
@@ -483,8 +487,8 @@ pub fn eval(
         }
         Expr::Drop { span, lhs, rhs } => {
             debug!("Dyadic Drop");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             if !lhs_eval.is_scalar() {
                 return Err((span, "Drop left argument must be a scalar integer"));
@@ -504,13 +508,16 @@ pub fn eval(
             };
             Ok(Val::vector(data))
         }
-        Expr::Assign { span, .. } => {
-            Err((span, "Assignment (←) not yet implemented"))
+        Expr::Assign { name, rhs, .. } => {
+            debug!("Assignment");
+            let val = eval(lexer, *rhs, env)?;
+            env.insert(name, val.clone());
+            Ok(val)
         }
         Expr::OuterProduct { span, lhs, operator, rhs } => {
             debug!("Outer Product");
-            let lhs_eval = eval(lexer, *lhs)?;
-            let rhs_eval = eval(lexer, *rhs)?;
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
 
             let op_fn = get_operator_fn(operator);
 
@@ -530,12 +537,12 @@ pub fn eval(
         Expr::Conjugate { span, arg } => {
             debug!("Monadic Conjugate");
             let _ = span;
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
             Ok(arg_eval)
         }
         Expr::Negate { span, arg } => {
             debug!("Monadic Negate");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             apply_monadic_operation(span, &arg_eval, |&n| {
                 n.checked_neg()
@@ -544,7 +551,7 @@ pub fn eval(
         }
         Expr::Direction { span, arg } => {
             debug!("Monadic Direction");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             fn direction_op(value: &Scalar) -> Result<Scalar> {
                 match value.partial_cmp(&Scalar::Integer(0)) {
@@ -559,7 +566,7 @@ pub fn eval(
         }
         Expr::Reciprocal { span, arg } => {
             debug!("Monadic Reciprocal");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let reciprocal_operation = |a: &Scalar| {
                 Scalar::Integer(1)
@@ -571,7 +578,7 @@ pub fn eval(
         }
         Expr::Exp { span, arg } => {
             debug!("Monadic Exponential");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let exp_operation = |a: &Scalar| match a {
                 Scalar::Integer(val) => Ok(Scalar::Float((*val as f64).exp())),
@@ -582,7 +589,7 @@ pub fn eval(
         }
         Expr::NaturalLog { span, arg } => {
             debug!("Monadic Natural Log");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let nat_log_operation = |value: &Scalar| match value {
                 Scalar::Integer(val) if *val > 0 => Ok(Scalar::Float((*val as f64).ln())),
@@ -594,7 +601,7 @@ pub fn eval(
         }
         Expr::PiMultiple { span, arg } => {
             debug!("Monadic Pi Multiple");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let pi_multiple_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Float(*i as f64 * std::f64::consts::PI)),
@@ -605,7 +612,7 @@ pub fn eval(
         }
         Expr::Factorial { span, arg } => {
             debug!("Monadic Factorial");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let factorial_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) if *i >= 0 => {
@@ -631,7 +638,7 @@ pub fn eval(
         }
         Expr::Roll { span, arg } => {
             debug!("Monadic Roll");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let roll_operation = |limit: &Scalar| {
                 let mut rng = rand::thread_rng();
@@ -649,7 +656,7 @@ pub fn eval(
         }
         Expr::Magnitude { span, arg } => {
             debug!("Monadic Magnitude");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let magnitude_operation = |value: &Scalar| match value {
                 Scalar::Integer(val) => Ok(Scalar::Integer(val.abs())),
@@ -660,7 +667,7 @@ pub fn eval(
         }
         Expr::Ceil { span, arg } => {
             debug!("Monadic Ceiling");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let ceil_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Integer(*i)),
@@ -671,7 +678,7 @@ pub fn eval(
         }
         Expr::Floor { span, arg } => {
             debug!("Monadic Floor");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let floor_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Integer(*i)),
@@ -682,7 +689,7 @@ pub fn eval(
         }
         Expr::MonadicMax { span, arg } => {
             debug!("Monadic Maximum");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             arg_eval.data.iter()
                 .max()
@@ -691,7 +698,7 @@ pub fn eval(
         }
         Expr::MonadicMin { span, arg } => {
             debug!("Monadic Minimum");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             arg_eval.data.iter()
                 .min()
@@ -700,7 +707,7 @@ pub fn eval(
         }
         Expr::GenIndex { span, arg } => {
             debug!("Monadic Iota: generate index");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             if !arg_eval.is_scalar() {
                 return Err((span, "Generate index only accepts a scalar integer"));
@@ -719,7 +726,7 @@ pub fn eval(
         }
         Expr::Where { arg, .. } => {
             debug!("Monadic Where");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
 
             let data: Vec<Scalar> = arg_eval.data.iter()
                 .enumerate()
@@ -738,7 +745,7 @@ pub fn eval(
         }
         Expr::Shape { arg, .. } => {
             debug!("Monadic Shape");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
             let data: Vec<Scalar> = arg_eval.shape.iter()
                 .map(|&s| Scalar::Integer(s as i64))
                 .collect();
@@ -746,19 +753,19 @@ pub fn eval(
         }
         Expr::Ravel { arg, .. } => {
             debug!("Monadic Ravel");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
             Ok(Val::vector(arg_eval.data))
         }
         Expr::Reverse { arg, .. } => {
             debug!("Monadic Reverse");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
             let mut data = arg_eval.data;
             data.reverse();
             Ok(Val::new(arg_eval.shape, data))
         }
         Expr::Transpose { arg, .. } => {
             debug!("Monadic Transpose");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
             match arg_eval.shape.len() {
                 0 | 1 => Ok(arg_eval),
                 2 => {
@@ -777,7 +784,7 @@ pub fn eval(
         }
         Expr::GradeUp { span, arg } => {
             debug!("Monadic Grade Up");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
             let _ = span;
             let mut indices: Vec<usize> = (0..arg_eval.data.len()).collect();
             indices.sort_by(|&a, &b| arg_eval.data[a].cmp(&arg_eval.data[b]));
@@ -786,7 +793,7 @@ pub fn eval(
         }
         Expr::GradeDown { span, arg } => {
             debug!("Monadic Grade Down");
-            let arg_eval = eval(lexer, *arg)?;
+            let arg_eval = eval(lexer, *arg, env)?;
             let _ = span;
             let mut indices: Vec<usize> = (0..arg_eval.data.len()).collect();
             indices.sort_by(|&a, &b| arg_eval.data[b].cmp(&arg_eval.data[a]));
@@ -799,7 +806,7 @@ pub fn eval(
             term,
         } => {
             debug!("Reduce");
-            let term_eval = eval(lexer, *term)?;
+            let term_eval = eval(lexer, *term, env)?;
 
             // APL reduce is a right-fold: f/ a b c d = a f (b f (c f d))
             let op_fn = get_operator_fn(operator);
@@ -821,7 +828,7 @@ pub fn eval(
             term,
         } => {
             debug!("Scan");
-            let term_eval = eval(lexer, *term)?;
+            let term_eval = eval(lexer, *term, env)?;
 
             let op_fn = get_operator_fn(operator);
 
@@ -839,6 +846,34 @@ pub fn eval(
                 data.push(result);
             }
             Ok(Val::vector(data))
+        }
+        Expr::Variable { span, name } => {
+            debug!("Variable: {name}");
+            env.get(&name).cloned().ok_or((span, "Undefined variable"))
+        }
+        Expr::Omega { span } => {
+            env.get("⍵").cloned().ok_or((span, "⍵ used outside of a dfn"))
+        }
+        Expr::Alpha { span } => {
+            env.get("⍺").cloned().ok_or((span, "⍺ used outside of a dfn"))
+        }
+        Expr::MonadicDfn { span, body, rhs } => {
+            debug!("Monadic Dfn");
+            let rhs_val = eval(lexer, *rhs, env)?;
+            let _ = span;
+            let mut dfn_env = env.clone();
+            dfn_env.insert("⍵".to_string(), rhs_val);
+            eval(lexer, *body, &mut dfn_env)
+        }
+        Expr::DyadicDfn { span, lhs, body, rhs } => {
+            debug!("Dyadic Dfn");
+            let lhs_val = eval(lexer, *lhs, env)?;
+            let rhs_val = eval(lexer, *rhs, env)?;
+            let _ = span;
+            let mut dfn_env = env.clone();
+            dfn_env.insert("⍺".to_string(), lhs_val);
+            dfn_env.insert("⍵".to_string(), rhs_val);
+            eval(lexer, *body, &mut dfn_env)
         }
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");
@@ -863,7 +898,7 @@ pub fn eval(
             debug!(?elements, "Vector elements");
 
             let results: Vec<Result<Val, (Span, &'static str)>> =
-                elements.into_iter().map(|elem| eval(lexer, elem)).collect();
+                elements.into_iter().map(|elem| eval(lexer, elem, env)).collect();
 
             if let Some(err) = results.iter().find_map(|r| r.as_ref().err()) {
                 error!(?span, "Error in vector evaluation at span: {:?}", err);
