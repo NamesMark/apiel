@@ -238,6 +238,46 @@ pub fn eval(
 
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, residue_operation)
         }
+        Expr::IndexOf { span, lhs, rhs } => {
+            debug!("Dyadic Index Of");
+            // A ⍳ B — for each element of B, find its 1-based position in A.
+            // If not found, returns 1 + length of A.
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            let not_found = lhs_eval.len() as i64 + 1;
+
+            let result = rhs_eval
+                .iter()
+                .map(|needle| {
+                    let pos = lhs_eval
+                        .iter()
+                        .position(|hay| hay == needle)
+                        .map(|i| i as i64 + 1)
+                        .unwrap_or(not_found);
+                    Val::Integer(pos)
+                })
+                .collect();
+
+            Ok(result)
+        }
+        Expr::IntervalIndex { span, lhs, rhs } => {
+            debug!("Dyadic Interval Index");
+            // A ⍸ B — for each element of B, count how many elements of A are ≤ it.
+            // A must be sorted ascending.
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+            let _ = span;
+
+            let result = rhs_eval
+                .iter()
+                .map(|val| {
+                    let count = lhs_eval.iter().filter(|&a| a <= val).count();
+                    Val::Integer(count as i64)
+                })
+                .collect();
+
+            Ok(result)
+        }
 
         Expr::Conjugate { span, arg } => {
             debug!("Monadic Conjugate");
