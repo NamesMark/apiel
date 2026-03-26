@@ -484,65 +484,20 @@ pub fn eval(
             debug!("Reduce");
             let term_eval = eval(lexer, *term)?;
 
-            let result = match operator {
-                Operator::Add => term_eval.iter().skip(1).try_fold(
-                    term_eval.first().cloned().unwrap_or(Val::Integer(0)),
-                    |acc, n| match (acc, n) {
-                        (Val::Integer(a), Val::Integer(b)) => a.checked_add(*b).map(Val::Integer),
-                        (Val::Float(a), Val::Float(b)) => Some(Val::Float(a + b)),
-                        (Val::Integer(a), Val::Float(b)) => Some(Val::Float(a as f64 + b)),
-                        (Val::Float(a), Val::Integer(b)) => Some(Val::Float(a + *b as f64)),
-                    },
-                ),
-                Operator::Subtract => term_eval.iter().skip(1).try_fold(
-                    term_eval.first().cloned().unwrap_or(Val::Integer(1)),
-                    |acc, n| match (acc, n) {
-                        (Val::Integer(a), Val::Integer(b)) => a.checked_sub(*b).map(Val::Integer),
-                        (Val::Float(a), Val::Float(b)) => Some(Val::Float(a - b)),
-                        (Val::Integer(a), Val::Float(b)) => Some(Val::Float(a as f64 - b)),
-                        (Val::Float(a), Val::Integer(b)) => Some(Val::Float(a - *b as f64)),
-                    },
-                ),
-                Operator::Multiply => {
-                    term_eval
-                        .into_iter()
-                        .try_fold(Val::Integer(1), |acc, n| match (acc, n) {
-                            (Val::Integer(a), Val::Integer(b)) => {
-                                a.checked_mul(b).map(Val::Integer)
-                            }
-                            (Val::Float(a), Val::Float(b)) => Some(Val::Float(a * b)),
-                            (Val::Integer(a), Val::Float(b)) => Some(Val::Float(a as f64 * b)),
-                            (Val::Float(a), Val::Integer(b)) => Some(Val::Float(a * b as f64)),
-                        })
-                }
-                Operator::Divide => term_eval.iter().skip(1).try_fold(
-                    term_eval.first().cloned().unwrap_or(Val::Integer(1)),
-                    |acc, n| match (acc, n) {
-                        (Val::Integer(a), Val::Integer(b)) => a.checked_div(*b).map(Val::Integer),
-                        (Val::Float(a), Val::Float(b)) => {
-                            if *b != 0.0 {
-                                Some(Val::Float(a / b))
-                            } else {
-                                None
-                            }
-                        }
-                        (Val::Integer(a), Val::Float(b)) => {
-                            if *b != 0.0 {
-                                Some(Val::Float(a as f64 / b))
-                            } else {
-                                None
-                            }
-                        }
-                        (Val::Float(a), Val::Integer(b)) => {
-                            if *b != 0 {
-                                Some(Val::Float(a / *b as f64))
-                            } else {
-                                None
-                            }
-                        }
-                    },
-                ),
+            // APL reduce is a right-fold: f/ a b c d = a f (b f (c f d))
+            let op_fn: fn(&Val, &Val) -> Option<Val> = match operator {
+                Operator::Add => |a, b| a.checked_add(b),
+                Operator::Subtract => |a, b| a.checked_sub(b),
+                Operator::Multiply => |a, b| a.checked_mul(b),
+                Operator::Divide => |a, b| a.checked_div(b),
             };
+
+            let result = term_eval.iter().rev().copied().try_fold(None, |acc, n| {
+                match acc {
+                    None => Some(Some(n)),
+                    Some(right) => op_fn(&n, &right).map(Some),
+                }
+            }).flatten();
 
             result
                 .map(|r| vec![r])
