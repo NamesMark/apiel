@@ -103,16 +103,19 @@ Term -> Result<Expr, ()>:
     | 'NAME' 'ASSIGN' Term {
         Ok(Expr::Assign{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($3?) })
       }
+    | 'NAME' 'ASSIGN' '{' DfnBody '}' {
+        Ok(Expr::AssignDfn{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), body: Box::new($4?) })
+      }
     | Factor 'OUTERPRODUCT' Operator Term {
         match $3 {
             Ok(op) => Ok(Expr::OuterProduct{ span: $span, lhs: Box::new($1?), operator: op, rhs: Box::new($4?) }),
             Err(_) => Err(())
         }
       }
-    | Factor '{' Expr '}' Term {
+    | Factor '{' DfnBody '}' Term {
         Ok(Expr::DyadicDfn{ span: $span, lhs: Box::new($1?), body: Box::new($3?), rhs: Box::new($5?) })
       }
-    | '{' Expr '}' Term {
+    | '{' DfnBody '}' Term {
         Ok(Expr::MonadicDfn{ span: $span, body: Box::new($2?), rhs: Box::new($4?) })
       }
     | MonadicFactor {
@@ -189,6 +192,22 @@ MonadicFactor -> Result<Expr, ()>:
     | 'GRADEDN' Term {
         Ok(Expr::GradeDown{ span: $span, arg: Box::new($2?) })
       }
+    | 'SELF' Term {
+        Ok(Expr::SelfCall{ span: $span, arg: Box::new($2?) })
+      }
+    ;
+
+DfnBody -> Result<Expr, ()>:
+      Expr 'DIAMOND' DfnBody {
+        Ok(Expr::DfnStatements{ span: $span, first: Box::new($1?), rest: Box::new($3?) })
+      }
+    | Expr ':' Expr 'DIAMOND' DfnBody {
+        Ok(Expr::DfnGuard{ span: $span, cond: Box::new($1?), result: Box::new($3?), rest: Box::new($5?) })
+      }
+    | Expr ':' Expr {
+        Ok(Expr::DfnGuard{ span: $span, cond: Box::new($1?), result: Box::new($3?), rest: Box::new(Expr::ScalarInteger { span: $span }) })
+      }
+    | Expr { $1 }
     ;
 
 Factor -> Result<Expr, ()>:
@@ -275,7 +294,7 @@ Unmatched -> ():
 
 use cfgrammar::Span;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     // Dyadic
     Add {
@@ -460,6 +479,26 @@ pub enum Expr {
     Alpha {
         span: Span,
     },
+    SelfCall {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    DfnStatements {
+        span: Span,
+        first: Box<Expr>,
+        rest: Box<Expr>,
+    },
+    DfnGuard {
+        span: Span,
+        cond: Box<Expr>,
+        result: Box<Expr>,
+        rest: Box<Expr>,
+    },
+    AssignDfn {
+        span: Span,
+        name: String,
+        body: Box<Expr>,
+    },
     OuterProduct {
         span: Span,
         lhs: Box<Expr>,
@@ -583,7 +622,7 @@ pub enum Expr {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Operator {
     Add,
     Subtract,
