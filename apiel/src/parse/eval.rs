@@ -225,15 +225,15 @@ pub fn eval(
         }
         Expr::Residue { span, lhs, rhs } => {
             debug!("Dyadic Residue");
-            // aka modulo
+            // APL: B|A means A mod B (rhs mod lhs)
             let lhs_eval = eval(lexer, *lhs)?;
             let rhs_eval = eval(lexer, *rhs)?;
 
             let residue_operation = |a: &Val, b: &Val| match (&a, &b) {
-                (Val::Integer(a), Val::Integer(b)) => Ok(Val::Integer(a % b)),
-                (Val::Float(a), Val::Integer(b)) => Ok(Val::Float(a % *b as f64)),
-                (Val::Integer(a), Val::Float(b)) => Ok(Val::Float(*a as f64 % b)),
-                (Val::Float(a), Val::Float(b)) => Ok(Val::Float(a % b)),
+                (Val::Integer(a), Val::Integer(b)) => Ok(Val::Integer(b % a)),
+                (Val::Float(a), Val::Integer(b)) => Ok(Val::Float(*b as f64 % a)),
+                (Val::Integer(a), Val::Float(b)) => Ok(Val::Float(b % *a as f64)),
+                (Val::Float(a), Val::Float(b)) => Ok(Val::Float(b % a)),
             };
 
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, residue_operation)
