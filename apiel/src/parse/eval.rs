@@ -180,22 +180,24 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs)?;
             let rhs_eval = eval(lexer, *rhs)?;
 
-            fn gamma(n: f64) -> f64 {
-                n.exp()
+            // APL: k ! n = C(n, k) = n! / (k! * (n-k)!)
+            // lhs is k, rhs is n
+            fn binomial(n: f64, k: f64) -> f64 {
+                if k < 0.0 || k > n {
+                    return 0.0;
+                }
+                let k = if k > n - k { n - k } else { k };
+                let mut result = 1.0;
+                for i in 0..k as i64 {
+                    result *= (n - i as f64) / (i as f64 + 1.0);
+                }
+                result
             }
 
-            fn binomial(x: f64, y: f64) -> f64 {
-                gamma(x + 1.0) / (gamma(y + 1.0) * gamma(x - y + 1.0))
-            }
-
-            let binomial_operation = |a: &Val, b: &Val| match (a, b) {
-                (Val::Integer(n), Val::Integer(k)) if *n >= 0 && *k >= 0 => {
-                    Ok(Val::Float(binomial(*n as f64, *k as f64)))
-                }
-                (Val::Float(x), Val::Float(y)) if *y >= 0.0 && x >= y => {
-                    Ok(Val::Float(binomial(*x, *y)))
-                }
-                _ => eyre::bail!("Invalid input for binomial calculation"),
+            let binomial_operation = |a: &Val, b: &Val| {
+                let k = f64::from(*a);
+                let n = f64::from(*b);
+                Ok(Val::Float(binomial(n, k)))
             };
 
             apply_dyadic_operation(span, &lhs_eval, &rhs_eval, binomial_operation)
