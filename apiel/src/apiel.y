@@ -223,16 +223,16 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
-    //IndexOf {
-    //    span: Span,
-    //    lhs: Box<Expr>,
-    //    rhs: Box<Expr>,
-    //},
-    //IntervalIndex {
-    //    span: Span,
-    //    lhs: Box<Expr>,
-    //    rhs: Box<Expr>,
-    //},
+    IndexOf {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    IntervalIndex {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
 
     // Monadic
 
