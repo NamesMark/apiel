@@ -370,6 +370,30 @@ fn strings_and_chars() {
 fn matrix_inverse() {
     let mut env = Env::new();
     let val = eval_to_val("⌹ 1 1 ⍴ 4", &mut env).unwrap();
-    let v: f64 = val.data[0].into();
+    let v: f64 = val.data[0].clone().into();
     assert!((v - 0.25).abs() < 1e-9, "1x1 inverse: got {v}");
+}
+
+#[test]
+fn nested_arrays() {
+    let mut env = Env::new();
+
+    // Enclose wraps as nested scalar
+    let val = eval_to_val("⊂ 1 2 3", &mut env).unwrap();
+    assert!(val.is_scalar(), "enclosed should be scalar");
+    assert_eq!(format_val(&val), "(1 2 3)");
+
+    // Shape of enclosed is empty (scalar)
+    assert_apl("⍴ ⊂ 1 2 3", &[], "shape of enclosed");
+
+    // Disclose unwraps
+    assert_apl("⊃ ⊂ 1 2 3", &[1.0, 2.0, 3.0], "disclose enclosed");
+
+    // First of plain vector
+    assert_apl("⊃ 1 2 3", &[1.0], "first of vector");
+
+    // Partition
+    let val = eval_to_val("1 1 0 1 1 ⊆ 10 20 30 40 50", &mut env).unwrap();
+    assert_eq!(format_val(&val), "(10 20) (40 50)");
+    assert_eq!(val.data.len(), 2); // two groups
 }

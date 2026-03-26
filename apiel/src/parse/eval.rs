@@ -97,8 +97,8 @@ fn get_operator_fn(op: Operator) -> fn(&Scalar, &Scalar) -> Option<Scalar> {
         Operator::Equal => |a, b| Some(Scalar::Integer(if a == b { 1 } else { 0 })),
         Operator::LessThan => |a, b| Some(Scalar::Integer(if a < b { 1 } else { 0 })),
         Operator::GreaterThan => |a, b| Some(Scalar::Integer(if a > b { 1 } else { 0 })),
-        Operator::Max => |a, b| Some(if a >= b { *a } else { *b }),
-        Operator::Min => |a, b| Some(if a <= b { *a } else { *b }),
+        Operator::Max => |a, b| Some(if a >= b { a.clone() } else { b.clone() }),
+        Operator::Min => |a, b| Some(if a <= b { a.clone() } else { b.clone() }),
     }
 }
 
@@ -161,11 +161,11 @@ pub fn eval(
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
 
-            let pow_operation = |a: &Scalar, b: &Scalar| match TryInto::<usize>::try_into(*b) {
+            let pow_operation = |a: &Scalar, b: &Scalar| match TryInto::<usize>::try_into(b.clone()) {
                 Ok(int_exp) => a.checked_pow(int_exp).ok_or_eyre(format!(
                     "Exponentiation overflow or invalid operation for {a:?} and {int_exp:?}"
                 )),
-                Err(_) => a.checked_powf(f64::from(*b)).ok_or_eyre(format!(
+                Err(_) => a.checked_powf(f64::from(b.clone())).ok_or_eyre(format!(
                     "Exponentiation overflow or invalid operation for {a:?} and {b:?}"
                 )),
             };
@@ -190,9 +190,9 @@ pub fn eval(
 
             let min_operation = |a: &Scalar, b: &Scalar| {
                 let result = match a.cmp(b) {
-                    std::cmp::Ordering::Greater => *b,
-                    std::cmp::Ordering::Equal => *b,
-                    std::cmp::Ordering::Less => *a,
+                    std::cmp::Ordering::Greater => b.clone(),
+                    std::cmp::Ordering::Equal => b.clone(),
+                    std::cmp::Ordering::Less => a.clone(),
                 };
                 Ok(result)
             };
@@ -206,9 +206,9 @@ pub fn eval(
 
             let max_operation = |a: &Scalar, b: &Scalar| {
                 let result = match a.cmp(b) {
-                    std::cmp::Ordering::Greater => *a,
-                    std::cmp::Ordering::Equal => *a,
-                    std::cmp::Ordering::Less => *b,
+                    std::cmp::Ordering::Greater => a.clone(),
+                    std::cmp::Ordering::Equal => a.clone(),
+                    std::cmp::Ordering::Less => b.clone(),
                 };
                 Ok(result)
             };
@@ -235,8 +235,8 @@ pub fn eval(
             }
 
             let binomial_operation = |a: &Scalar, b: &Scalar| {
-                let k = f64::from(*a);
-                let n = f64::from(*b);
+                let k = f64::from(a.clone());
+                let n = f64::from(b.clone());
                 Ok(Scalar::Float(binomial(n, k)))
             };
 
@@ -251,8 +251,8 @@ pub fn eval(
                 return Err((span, "Deal operation is only available for two scalars"));
             }
 
-            let (lhs, rhs) = match (lhs_eval.data[0], rhs_eval.data[0]) {
-                (Scalar::Integer(lhs), Scalar::Integer(rhs)) => (lhs, rhs),
+            let (lhs, rhs) = match (&lhs_eval.data[0], &rhs_eval.data[0]) {
+                (Scalar::Integer(lhs), Scalar::Integer(rhs)) => (*lhs, *rhs),
                 _ => return Err((span, "Deal arguments must be integers")),
             };
 
@@ -322,12 +322,12 @@ pub fn eval(
             let rhs_eval = eval(lexer, *rhs, env)?;
 
             let new_shape: Vec<usize> = lhs_eval.data.iter()
-                .map(|s| usize::try_from(*s).map_err(|_| (span, "Reshape dimensions must be non-negative integers")))
+                .map(|s| usize::try_from(s.clone()).map_err(|_| (span, "Reshape dimensions must be non-negative integers")))
                 .collect::<Result<Vec<usize>, _>>()?;
 
             let total: usize = new_shape.iter().product::<usize>().max(1);
             let data: Vec<Scalar> = rhs_eval.data.iter()
-                .copied()
+                .cloned()
                 .cycle()
                 .take(total)
                 .collect();
@@ -352,8 +352,8 @@ pub fn eval(
             if !lhs_eval.is_scalar() {
                 return Err((span, "Rotate left argument must be a scalar integer"));
             }
-            let n = match lhs_eval.data[0] {
-                Scalar::Integer(i) => i,
+            let n = match &lhs_eval.data[0] {
+                Scalar::Integer(i) => *i,
                 _ => return Err((span, "Rotate left argument must be an integer")),
             };
 
@@ -466,7 +466,7 @@ pub fn eval(
                     _ => return Err((span, "Replicate count must be a non-negative integer")),
                 };
                 let data: Vec<Scalar> = rhs_eval.data.iter()
-                    .flat_map(|v| std::iter::repeat_n(*v, n))
+                    .flat_map(|v| std::iter::repeat_n(v.clone(), n))
                     .collect();
                 Ok(Val::vector(data))
             } else {
@@ -481,7 +481,7 @@ pub fn eval(
                             Scalar::Float(f) => *f as usize,
                             _ => 0,
                         };
-                        std::iter::repeat_n(*val, n)
+                        std::iter::repeat_n(val.clone(), n)
                     })
                     .collect();
                 Ok(Val::vector(data))
@@ -502,8 +502,8 @@ pub fn eval(
                 };
                 if n > 0 {
                     match rhs_iter.next() {
-                        Some(&v) => {
-                            for _ in 0..n { data.push(v); }
+                        Some(v) => {
+                            for _ in 0..n { data.push(v.clone()); }
                         }
                         None => return Err((span, "Expand: not enough data elements")),
                     }
@@ -519,7 +519,7 @@ pub fn eval(
             let rhs_eval = eval(lexer, *rhs, env)?;
 
             let circular_op = |func: &Scalar, val: &Scalar| {
-                let x = f64::from(*val);
+                let x = f64::from(val.clone());
                 let result = match func {
                     Scalar::Integer(0) => (1.0 - x * x).sqrt(),
                     Scalar::Integer(1) => x.sin(),
@@ -558,12 +558,12 @@ pub fn eval(
             let len = rhs_eval.data.len();
             let abs_n = n.unsigned_abs() as usize;
             let mut data = if n >= 0 {
-                let mut d: Vec<Scalar> = rhs_eval.data.iter().copied().take(abs_n).collect();
+                let mut d: Vec<Scalar> = rhs_eval.data.iter().cloned().take(abs_n).collect();
                 while d.len() < abs_n { d.push(Scalar::Integer(0)); }
                 d
             } else {
                 let skip = if abs_n <= len { len - abs_n } else { 0 };
-                let mut d: Vec<Scalar> = rhs_eval.data.iter().copied().skip(skip).collect();
+                let mut d: Vec<Scalar> = rhs_eval.data.iter().cloned().skip(skip).collect();
                 while d.len() < abs_n { d.insert(0, Scalar::Integer(0)); }
                 d
             };
@@ -629,7 +629,7 @@ pub fn eval(
             debug!("Monadic Negate");
             let arg_eval = eval(lexer, *arg, env)?;
 
-            apply_monadic_operation(span, &arg_eval, |&n| {
+            apply_monadic_operation(span, &arg_eval, |n| {
                 n.checked_neg()
                     .ok_or_eyre(format!("Negation overflow or invalid operation for {n:?}"))
             })
@@ -668,7 +668,7 @@ pub fn eval(
             let exp_operation = |a: &Scalar| match a {
                 Scalar::Integer(val) => Ok(Scalar::Float((*val as f64).exp())),
                 Scalar::Float(val) => Ok(Scalar::Float(val.exp())),
-                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
+                _ => eyre::bail!("Not defined for non-numeric types"),
             };
 
             apply_monadic_operation(span, &arg_eval, exp_operation)
@@ -692,7 +692,7 @@ pub fn eval(
             let pi_multiple_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Float(*i as f64 * std::f64::consts::PI)),
                 Scalar::Float(f) => Ok(Scalar::Float(*f * std::f64::consts::PI)),
-                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
+                _ => eyre::bail!("Not defined for non-numeric types"),
             };
 
             apply_monadic_operation(span, &arg_eval, pi_multiple_operation)
@@ -748,7 +748,7 @@ pub fn eval(
             let magnitude_operation = |value: &Scalar| match value {
                 Scalar::Integer(val) => Ok(Scalar::Integer(val.abs())),
                 Scalar::Float(val) => Ok(Scalar::Float(val.abs())),
-                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
+                _ => eyre::bail!("Not defined for non-numeric types"),
             };
 
             apply_monadic_operation(span, &arg_eval, magnitude_operation)
@@ -760,7 +760,7 @@ pub fn eval(
             let ceil_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Integer(*i)),
                 Scalar::Float(f) => Ok(Scalar::Float(f.ceil())),
-                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
+                _ => eyre::bail!("Not defined for non-numeric types"),
             };
 
             apply_monadic_operation(span, &arg_eval, ceil_operation)
@@ -772,7 +772,7 @@ pub fn eval(
             let floor_operation = |a: &Scalar| match a {
                 Scalar::Integer(i) => Ok(Scalar::Integer(*i)),
                 Scalar::Float(f) => Ok(Scalar::Float(f.floor())),
-                Scalar::Char(_) => eyre::bail!("Not defined for chars"),
+                _ => eyre::bail!("Not defined for non-numeric types"),
             };
 
             apply_monadic_operation(span, &arg_eval, floor_operation)
@@ -784,7 +784,7 @@ pub fn eval(
             arg_eval.data.iter()
                 .max()
                 .ok_or((span, "Cannot find max"))
-                .map(|&num| Val::scalar(num))
+                .map(|num| Val::scalar(num.clone()))
         }
         Expr::MonadicMin { span, arg } => {
             debug!("Monadic Minimum");
@@ -793,7 +793,7 @@ pub fn eval(
             arg_eval.data.iter()
                 .min()
                 .ok_or((span, "Cannot find min"))
-                .map(|&num| Val::scalar(num))
+                .map(|num| Val::scalar(num.clone()))
         }
         Expr::GenIndex { span, arg } => {
             debug!("Monadic Iota: generate index");
@@ -864,7 +864,7 @@ pub fn eval(
                     let mut data = vec![Scalar::Integer(0); rows * cols];
                     for r in 0..rows {
                         for c in 0..cols {
-                            data[c * rows + r] = arg_eval.data[r * cols + c];
+                            data[c * rows + r] = arg_eval.data[r * cols + c].clone();
                         }
                     }
                     Ok(Val::new(vec![cols, rows], data))
@@ -901,7 +901,7 @@ pub fn eval(
             // APL reduce is a right-fold: f/ a b c d = a f (b f (c f d))
             let op_fn = get_operator_fn(operator);
 
-            let result = term_eval.data.iter().rev().copied().try_fold(None, |acc, n| {
+            let result = term_eval.data.iter().rev().cloned().try_fold(None, |acc, n| {
                 match acc {
                     None => Some(Some(n)),
                     Some(right) => op_fn(&n, &right).map(Some),
@@ -926,7 +926,7 @@ pub fn eval(
             let mut data = Vec::with_capacity(term_eval.data.len());
             for i in 0..term_eval.data.len() {
                 let prefix = &term_eval.data[..=i];
-                let result = prefix.iter().rev().copied().try_fold(None::<Scalar>, |acc, n| {
+                let result = prefix.iter().rev().cloned().try_fold(None::<Scalar>, |acc, n| {
                     match acc {
                         None => Some(Some(n)),
                         Some(right) => op_fn(&n, &right).map(Some),
@@ -1028,18 +1028,68 @@ pub fn eval(
             eval_stored_dfn(&stored, &mut dfn_env)
                 .map_err(|(_span, msg)| (span, Box::leak(msg.into_boxed_str()) as &'static str))
         }
+        Expr::Enclose { arg, .. } => {
+            debug!("Monadic Enclose");
+            let arg_eval = eval(lexer, *arg, env)?;
+            Ok(Val::scalar(Scalar::Nested(Box::new(arg_eval))))
+        }
         Expr::First { span, arg } => {
-            debug!("Monadic First");
+            debug!("Monadic First / Disclose");
             let arg_eval = eval(lexer, *arg, env)?;
             let _ = span;
-            Ok(Val::scalar(arg_eval.data.into_iter().next().unwrap_or(Scalar::Integer(0))))
+            match arg_eval.data.into_iter().next() {
+                Some(Scalar::Nested(v)) => Ok(*v),
+                Some(s) => Ok(Val::scalar(s)),
+                None => Ok(Val::scalar(Scalar::Integer(0))),
+            }
+        }
+        Expr::Partition { span, lhs, rhs } => {
+            debug!("Dyadic Partition");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            if lhs_eval.data.len() != rhs_eval.data.len() {
+                return Err((span, "Partition: arguments must have same length"));
+            }
+
+            let mut groups: Vec<Scalar> = Vec::new();
+            let mut current: Vec<Scalar> = Vec::new();
+            let mut in_group = false;
+
+            for (mask, val) in lhs_eval.data.iter().zip(rhs_eval.data.iter()) {
+                let m = match mask {
+                    Scalar::Integer(i) => *i,
+                    Scalar::Float(f) => *f as i64,
+                    _ => 0,
+                };
+                if m > 0 {
+                    if !in_group {
+                        if !current.is_empty() {
+                            groups.push(Scalar::Nested(Box::new(Val::vector(current))));
+                            current = Vec::new();
+                        }
+                        in_group = true;
+                    }
+                    current.push(val.clone());
+                } else {
+                    if !current.is_empty() {
+                        groups.push(Scalar::Nested(Box::new(Val::vector(current))));
+                        current = Vec::new();
+                    }
+                    in_group = false;
+                }
+            }
+            if !current.is_empty() {
+                groups.push(Scalar::Nested(Box::new(Val::vector(current))));
+            }
+            Ok(Val::vector(groups))
         }
         Expr::Unique { arg, .. } => {
             debug!("Monadic Unique");
             let arg_eval = eval(lexer, *arg, env)?;
             let mut seen = Vec::new();
             for v in &arg_eval.data {
-                if !seen.contains(v) { seen.push(*v); }
+                if !seen.contains(v) { seen.push(v.clone()); }
             }
             Ok(Val::vector(seen))
         }
@@ -1057,7 +1107,7 @@ pub fn eval(
             let _ = span;
             let mut data = lhs_eval.data;
             for v in &rhs_eval.data {
-                if !data.contains(v) { data.push(*v); }
+                if !data.contains(v) { data.push(v.clone()); }
             }
             Ok(Val::vector(data))
         }
@@ -1068,7 +1118,7 @@ pub fn eval(
             let _ = span;
             let data: Vec<Scalar> = lhs_eval.data.iter()
                 .filter(|v| rhs_eval.data.contains(v))
-                .copied()
+                .cloned()
                 .collect();
             Ok(Val::vector(data))
         }
@@ -1079,7 +1129,7 @@ pub fn eval(
             let _ = span;
             let data: Vec<Scalar> = lhs_eval.data.iter()
                 .filter(|v| !rhs_eval.data.contains(v))
-                .copied()
+                .cloned()
                 .collect();
             Ok(Val::vector(data))
         }
@@ -1091,9 +1141,9 @@ pub fn eval(
             if !lhs_eval.is_scalar() {
                 return Err((span, "Decode: left argument must be a scalar base"));
             }
-            let base = f64::from(lhs_eval.data[0]);
+            let base = f64::from(lhs_eval.data[0].clone());
             let result = rhs_eval.data.iter().fold(0.0_f64, |acc, v| {
-                acc * base + f64::from(*v)
+                acc * base + f64::from(v.clone())
             });
             Ok(Val::scalar(Scalar::Integer(result as i64)))
         }
@@ -1105,8 +1155,8 @@ pub fn eval(
             if !rhs_eval.is_scalar() {
                 return Err((span, "Encode: right argument must be a scalar"));
             }
-            let mut n = f64::from(rhs_eval.data[0]) as i64;
-            let bases: Vec<i64> = lhs_eval.data.iter().map(|v| f64::from(*v) as i64).collect();
+            let mut n = f64::from(rhs_eval.data[0].clone()) as i64;
+            let bases: Vec<i64> = lhs_eval.data.iter().map(|v| f64::from(v.clone()) as i64).collect();
             let mut data: Vec<Scalar> = vec![Scalar::Integer(0); bases.len()];
             for i in (0..bases.len()).rev() {
                 if bases[i] != 0 {
@@ -1132,7 +1182,7 @@ pub fn eval(
                     let products: Vec<Scalar> = lhs_eval.data.iter().zip(rhs_eval.data.iter())
                         .map(|(a, b)| g_fn(a, b).ok_or((span, "Inner product g failed")))
                         .collect::<Result<Vec<_>, _>>()?;
-                    let result = products.iter().rev().copied().try_fold(None::<Scalar>, |acc, n| {
+                    let result = products.iter().rev().cloned().try_fold(None::<Scalar>, |acc, n| {
                         match acc {
                             None => Some(Some(n)),
                             Some(right) => f_fn(&n, &right).map(Some),
@@ -1155,7 +1205,7 @@ pub fn eval(
                                 .map(|p| g_fn(&lhs_eval.data[i * k + p], &rhs_eval.data[p * n + j])
                                     .ok_or((span, "Inner product g failed")))
                                 .collect::<Result<Vec<_>, _>>()?;
-                            let result = products.iter().copied().reduce(|a, b| f_fn(&a, &b).unwrap_or(a))
+                            let result = products.iter().cloned().reduce(|a, b| f_fn(&a, &b).unwrap_or(a))
                                 .ok_or((span, "Inner product f failed"))?;
                             data.push(result);
                         }
@@ -1172,11 +1222,11 @@ pub fn eval(
 
             let data: Vec<Scalar> = lhs_eval.data.iter()
                 .map(|idx| {
-                    let i = f64::from(*idx) as usize;
+                    let i = f64::from(idx.clone()) as usize;
                     if i == 0 || i > rhs_eval.data.len() {
                         Err((span, "Index out of bounds"))
                     } else {
-                        Ok(rhs_eval.data[i - 1])
+                        Ok(rhs_eval.data[i - 1].clone())
                     }
                 })
                 .collect::<Result<Vec<_>, _>>()?;
@@ -1193,7 +1243,7 @@ pub fn eval(
                 return Err((span, "Matrix inverse requires a square matrix"));
             }
             // Gauss-Jordan elimination
-            let mut m: Vec<f64> = arg_eval.data.iter().map(|s| f64::from(*s)).collect();
+            let mut m: Vec<f64> = arg_eval.data.iter().map(|s| f64::from(s.clone())).collect();
             let mut inv = vec![0.0_f64; n * n];
             for i in 0..n { inv[i * n + i] = 1.0; }
 

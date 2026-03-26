@@ -2,11 +2,12 @@ use conv::ConvUtil;
 use eyre::Result;
 use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Scalar {
     Float(f64),
     Integer(i64),
     Char(char),
+    Nested(Box<Val>),
 }
 
 impl Scalar {
@@ -16,7 +17,7 @@ impl Scalar {
             (Scalar::Float(f), Scalar::Float(g)) => (Scalar::Float(*f), Scalar::Float(*g)),
             (Scalar::Integer(i), Scalar::Float(f)) => (Scalar::Float(*i as f64), Scalar::Float(*f)),
             (Scalar::Float(f), Scalar::Integer(i)) => (Scalar::Float(*f), Scalar::Float(*i as f64)),
-            _ => (*a, *b),
+            _ => (a.clone(), b.clone()),
         }
     }
 }
@@ -38,6 +39,7 @@ impl TryFrom<Scalar> for usize {
                 }
             }
             Scalar::Char(_) => Err("Cannot convert char to usize"),
+            Scalar::Nested(_) => Err("Cannot convert nested value to usize"),
         }
     }
 }
@@ -48,6 +50,7 @@ impl From<Scalar> for f64 {
             Scalar::Integer(val) => val as f64,
             Scalar::Float(val) => val,
             Scalar::Char(c) => c as u32 as f64,
+            Scalar::Nested(_) => 0.0,
         }
     }
 }
@@ -105,6 +108,7 @@ impl Ord for Scalar {
             (Scalar::Char(a), Scalar::Char(b)) => a.cmp(b),
             (Scalar::Char(_), _) => std::cmp::Ordering::Greater,
             (_, Scalar::Char(_)) => std::cmp::Ordering::Less,
+            _ => std::cmp::Ordering::Equal,
         }
     }
 }
@@ -220,6 +224,7 @@ impl CheckedPow for Scalar {
             Scalar::Integer(i) => i.checked_pow(other as u32).map(Scalar::Integer),
             Scalar::Float(f) => Some(Scalar::Float(num_traits::pow::pow(*f, other))),
             Scalar::Char(_) => None,
+            Scalar::Nested(_) => None,
         }
     }
 
@@ -228,6 +233,7 @@ impl CheckedPow for Scalar {
             Scalar::Integer(i) => Some(Scalar::Float((*i as f64).powf(other))),
             Scalar::Float(f) => Some(Scalar::Float(f.powf(other))),
             Scalar::Char(_) => None,
+            Scalar::Nested(_) => None,
         }
     }
 }
@@ -238,7 +244,10 @@ pub trait Log: Sized {
 
 impl Log for Scalar {
     fn log(&self, base: &Self) -> Option<Self> {
-        Some(Scalar::Float(f64::from(*self).log(f64::from(*base))))
+        match (self, base) {
+            (Scalar::Nested(_), _) | (_, Scalar::Nested(_)) => None,
+            _ => Some(Scalar::Float(f64::from(self.clone()).log(f64::from(base.clone())))),
+        }
     }
 }
 
@@ -248,6 +257,7 @@ impl CheckedNeg for Scalar {
             Scalar::Integer(i) => i.checked_neg().map(Scalar::Integer),
             Scalar::Float(f) => Some(Scalar::Float(-f)),
             Scalar::Char(_) => None,
+            Scalar::Nested(_) => None,
         }
     }
 }
@@ -285,7 +295,7 @@ impl Val {
             }
         }).collect();
         if data.len() == 1 {
-            Val::scalar(data[0])
+            Val::scalar(data.into_iter().next().unwrap())
         } else {
             Val::vector(data)
         }
