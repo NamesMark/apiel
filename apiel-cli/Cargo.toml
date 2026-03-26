@@ -16,4 +16,7 @@ apiel = { path = "../apiel" }
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+[dev-dependencies]
+assert_cmd = "2"
+
 [features]
