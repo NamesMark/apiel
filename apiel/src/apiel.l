@@ -47,6 +47,7 @@
 \⊂ "ENCLOSE"
 \⊃ "FIRST"
 \⊆ "PARTITION"
+\¨ "EACH"
 \∪ "UNIQUE"
 \∩ "INTERSECT"
 \~ "TILDE"

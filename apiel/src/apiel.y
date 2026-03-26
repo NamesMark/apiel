@@ -155,6 +155,12 @@ Term -> Result<Expr, ()>:
             _ => Err(())
         }
       }
+    | Factor Operator 'EACH' Term {
+        match $2 {
+            Ok(op) => Ok(Expr::DyadicEach{ span: $span, lhs: Box::new($1?), operator: op, rhs: Box::new($4?) }),
+            Err(_) => Err(())
+        }
+      }
     | MonadicFactor {
         Ok($1?)
       }
@@ -247,6 +253,15 @@ MonadicFactor -> Result<Expr, ()>:
     | 'MATINV' Term {
         Ok(Expr::MatrixInverse{ span: $span, arg: Box::new($2?) })
       }
+    | 'RHO' 'EACH' Term {
+        Ok(Expr::MonadicEach{ span: $span, func: "shape".to_string(), arg: Box::new($3?) })
+      }
+    | 'ROTATE' 'EACH' Term {
+        Ok(Expr::MonadicEach{ span: $span, func: "reverse".to_string(), arg: Box::new($3?) })
+      }
+    | 'IOTA' 'EACH' Term {
+        Ok(Expr::MonadicEach{ span: $span, func: "iota".to_string(), arg: Box::new($3?) })
+      }
     ;
 
 DfnBody -> Result<Expr, ()>:
@@ -324,6 +339,12 @@ Factor -> Result<Expr, ()>:
     | Operator '\' Term {
         match $1 {
             Ok(op) => Ok(Expr::Scan{ span: $span, operator: op, term: Box::new($3?) }),
+            Err(_) => Err(())
+        }
+    }
+    | Operator '/' 'EACH' Term {
+        match $1 {
+            Ok(op) => Ok(Expr::ReduceEach{ span: $span, operator: op, term: Box::new($4?) }),
             Err(_) => Err(())
         }
     }
@@ -609,6 +630,22 @@ pub enum Expr {
         span: Span,
         lhs: Box<Expr>,
         rhs: Box<Expr>,
+    },
+    MonadicEach {
+        span: Span,
+        func: String,
+        arg: Box<Expr>,
+    },
+    DyadicEach {
+        span: Span,
+        lhs: Box<Expr>,
+        operator: Operator,
+        rhs: Box<Expr>,
+    },
+    ReduceEach {
+        span: Span,
+        operator: Operator,
+        term: Box<Expr>,
     },
     Unique {
         span: Span,

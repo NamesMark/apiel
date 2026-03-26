@@ -80,6 +80,7 @@ List of supported glyphs and operations:
 | ⊂ | Enclose | ✅ | - | -
 | ⊃ | First / Disclose | ✅ | - | -
 | ⊆ | - | - | Partition | ✅
+| ¨ | Each (monadic) | ✅ | Each (dyadic) | ✅
 | '' | String literals | ✅ | - | -
 
 - \* - Not implemented for complex numbers
