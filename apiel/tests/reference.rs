@@ -212,6 +212,13 @@ fn reference_tests() {
         ("10 {⍺×⍵} 1 2 3",             &[10.0, 20.0, 30.0],                   "dfn dyadic mul vector"),
         ("{⍵ + {⍵×2} 3} 10",           &[16.0],                                "nested dfn scoping"),
         ("5 {⍺ + {⍵×⍵} ⍵} 3",         &[14.0],                                "nested dfn alpha omega"),
+        // Guards
+        ("{⍵>0: ⍵ ⋄ 0} 5",             &[5.0],                                "guard true"),
+        ("{⍵>0: ⍵ ⋄ 0} ¯3",            &[0.0],                                "guard false"),
+        ("{⍵=0: 100 ⋄ ⍵=1: 200 ⋄ 300} 0", &[100.0],                          "multi guard first"),
+        ("{⍵=0: 100 ⋄ ⍵=1: 200 ⋄ 300} 1", &[200.0],                          "multi guard second"),
+        ("{⍵=0: 100 ⋄ ⍵=1: 200 ⋄ 300} 5", &[300.0],                          "multi guard fallback"),
+        // Self-reference (∇)
         // Expand (\ dyadic)
         ("1 0 1 0 1 \\ 1 2 3",          &[1.0, 0.0, 2.0, 0.0, 3.0],          "expand with zeros"),
         ("1 1 0 1 \\ 1 2 3",            &[1.0, 2.0, 0.0, 3.0],               "expand insert zero"),
@@ -283,4 +290,19 @@ fn macro_omega_alpha() {
     // Complex expression with Rust data
     let result = apl!("+/ ⍵", omega: &[1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
     assert_eq!(result, vec![15.0]);
+}
+
+#[test]
+fn recursive_dfns() {
+    // Needs larger stack due to deep recursion with env cloning
+    std::thread::Builder::new()
+        .stack_size(8 * 1024 * 1024)
+        .spawn(|| {
+            assert_apl("{⍵≤1: ⍵ ⋄ ⍵×∇ ⍵-1} 5", &[120.0], "recursive factorial");
+            assert_apl("{⍵≤0: 0 ⋄ ⍵+∇ ⍵-1} 10", &[55.0], "recursive sum");
+            assert_apl("{⍵<2: ⍵ ⋄ (∇ ⍵-1)+∇ ⍵-2} 10", &[55.0], "recursive fibonacci");
+        })
+        .unwrap()
+        .join()
+        .unwrap();
 }

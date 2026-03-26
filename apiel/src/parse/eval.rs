@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::rc::Rc;
 use super::*;
 use crate::parse::apiel_y::{Expr, Operator};
 use val::{Scalar, Val, CheckedPow, Log};
@@ -7,7 +8,17 @@ use num_traits::{CheckedAdd, CheckedDiv, CheckedMul, CheckedNeg, CheckedSub};
 use rand::Rng;
 use tracing::{debug, error};
 
-pub type Env = HashMap<String, Val>;
+#[derive(Debug, Clone, Default)]
+pub struct Env {
+    pub vars: HashMap<String, Val>,
+    pub fns: HashMap<String, Rc<Expr>>,  // name → dfn body AST (Rc for cheap cloning)
+}
+
+impl Env {
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
 
 fn apply_dyadic_operation<F>(
     span: Span,
@@ -563,7 +574,7 @@ pub fn eval(
         Expr::Assign { name, rhs, .. } => {
             debug!("Assignment");
             let val = eval(lexer, *rhs, env)?;
-            env.insert(name, val.clone());
+            env.vars.insert(name, val.clone());
             Ok(val)
         }
         Expr::OuterProduct { span, lhs, operator, rhs } => {
@@ -901,31 +912,66 @@ pub fn eval(
         }
         Expr::Variable { span, name } => {
             debug!("Variable: {name}");
-            env.get(&name).cloned().ok_or((span, "Undefined variable"))
+            env.vars.get(&name).cloned().ok_or((span, "Undefined variable"))
         }
         Expr::Omega { span } => {
-            env.get("⍵").cloned().ok_or((span, "⍵ used outside of a dfn"))
+            env.vars.get("⍵").cloned().ok_or((span, "⍵ used outside of a dfn"))
         }
         Expr::Alpha { span } => {
-            env.get("⍺").cloned().ok_or((span, "⍺ used outside of a dfn"))
+            env.vars.get("⍺").cloned().ok_or((span, "⍺ used outside of a dfn"))
         }
-        Expr::MonadicDfn { span, body, rhs } => {
+        Expr::MonadicDfn { body, rhs, .. } => {
             debug!("Monadic Dfn");
             let rhs_val = eval(lexer, *rhs, env)?;
-            let _ = span;
+            let body_rc = Rc::new(*body);
             let mut dfn_env = env.clone();
-            dfn_env.insert("⍵".to_string(), rhs_val);
-            eval(lexer, *body, &mut dfn_env)
+            dfn_env.vars.insert("⍵".to_string(), rhs_val);
+            dfn_env.fns.insert("∇".to_string(), Rc::clone(&body_rc));
+            eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
-        Expr::DyadicDfn { span, lhs, body, rhs } => {
+        Expr::DyadicDfn { lhs, body, rhs, .. } => {
             debug!("Dyadic Dfn");
             let lhs_val = eval(lexer, *lhs, env)?;
             let rhs_val = eval(lexer, *rhs, env)?;
-            let _ = span;
+            let body_rc = Rc::new(*body);
             let mut dfn_env = env.clone();
-            dfn_env.insert("⍺".to_string(), lhs_val);
-            dfn_env.insert("⍵".to_string(), rhs_val);
-            eval(lexer, *body, &mut dfn_env)
+            dfn_env.vars.insert("⍺".to_string(), lhs_val);
+            dfn_env.vars.insert("⍵".to_string(), rhs_val);
+            dfn_env.fns.insert("∇".to_string(), Rc::clone(&body_rc));
+            eval(lexer, (*body_rc).clone(), &mut dfn_env)
+        }
+        Expr::SelfCall { span, arg } => {
+            debug!("Self-reference ∇");
+            let arg_val = eval(lexer, *arg, env)?;
+            let body_rc = env.fns.get("∇").cloned()
+                .ok_or((span, "∇ used outside of a dfn"))?;
+            let mut self_env = env.clone();
+            self_env.vars.insert("⍵".to_string(), arg_val);
+            eval(lexer, (*body_rc).clone(), &mut self_env)
+        }
+        Expr::DfnGuard { cond, result, rest, .. } => {
+            debug!("Dfn Guard");
+            let cond_val = eval(lexer, *cond, env)?;
+            let is_true = match cond_val.data.first() {
+                Some(Scalar::Integer(1)) => true,
+                Some(Scalar::Float(f)) if *f == 1.0 => true,
+                _ => false,
+            };
+            if is_true {
+                eval(lexer, *result, env)
+            } else {
+                eval(lexer, *rest, env)
+            }
+        }
+        Expr::DfnStatements { first, rest, .. } => {
+            debug!("Dfn Statements");
+            eval(lexer, *first, env)?;
+            eval(lexer, *rest, env)
+        }
+        Expr::AssignDfn { name, body, .. } => {
+            debug!("Assign Dfn");
+            env.fns.insert(name, Rc::new(*body));
+            Ok(Val::scalar(Scalar::Integer(0)))
         }
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");
