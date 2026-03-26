@@ -226,6 +226,31 @@ fn reference_tests() {
         ("1 ○ 0",                        &[0.0],                                "sin 0"),
         ("2 ○ 0",                        &[1.0],                                "cos 0"),
         ("3 ○ 1",                        &[1.5574077246549023],                 "tan 1"),
+        // Expand with repeat counts
+        ("2 1 2 \\ 1 2 3",              &[1.0,1.0,2.0,3.0,3.0],              "expand repeat counts"),
+        // Inner product
+        ("1 2 3 +.× 4 5 6",            &[32.0],                               "inner product vector"),
+        ("⍴ (2 3 ⍴ ⍳ 6) +.× 3 2 ⍴ ⍳ 6", &[2.0, 2.0],                       "inner product matrix shape"),
+        (", (2 3 ⍴ ⍳ 6) +.× 3 2 ⍴ ⍳ 6", &[22.0, 28.0, 49.0, 64.0],        "inner product matrix data"),
+        // First (⊃)
+        ("⊃ 1 2 3",                     &[1.0],                                "first of vector"),
+        ("⊃ 5",                          &[5.0],                                "first of scalar"),
+        // Unique (∪)
+        ("∪ 1 2 3 2 1 4",              &[1.0, 2.0, 3.0, 4.0],                "unique"),
+        // Union (dyadic ∪)
+        ("1 2 3 ∪ 3 4 5",              &[1.0, 2.0, 3.0, 4.0, 5.0],          "union"),
+        // Intersection (∩)
+        ("1 2 3 ∩ 2 3 4",              &[2.0, 3.0],                           "intersection"),
+        // Without (~)
+        ("1 2 3 4 5 ~ 2 4",            &[1.0, 3.0, 5.0],                     "without"),
+        // Not (monadic ~)
+        ("~ 0 1 1 0",                   &[1.0, 0.0, 0.0, 1.0],               "not"),
+        // Decode (⊥)
+        ("2 ⊥ 1 0 1",                  &[5.0],                                "decode binary"),
+        ("10 ⊥ 1 2 3",                  &[123.0],                              "decode decimal"),
+        // Encode (⊤)
+        ("2 2 2 ⊤ 5",                  &[1.0, 0.0, 1.0],                     "encode binary"),
+        ("10 10 10 ⊤ 123",              &[1.0, 2.0, 3.0],                     "encode decimal"),
     ];
 
     let mut failures = Vec::new();
