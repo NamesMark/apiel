@@ -36,7 +36,7 @@ pub fn parse_and_evaluate(line: &str) -> Result<Vec<f64>, String> {
 
     if let Some(Ok(r)) = res {
         match eval::eval(&lexer, r) {
-            Ok(i) => Ok(i.into_iter().map(f64::from).collect()),
+            Ok(val) => Ok(val.data.into_iter().map(f64::from).collect()),
             Err((span, msg)) => {
                 let ((line, col), _) = lexer.line_col(span);
                 Err(format!(
