@@ -31,7 +31,7 @@ List of supported glyphs and operations:
 | ÷ | Reciprocal | ✅ | Division | ✅
 | * | Exponentiation | ✅ | Raising to power | ✅
 | ⍟ | Natural logarithm | ✅ | Logarithm | ✅
-| ⌹ | Matrix inverse | - | Matrix divide | -
+| ⌹ | Matrix inverse | ✅ | Matrix divide | -
 | ○ | Pi Multiple | ✅ | Circular functions | ✅
 | ! | Factorial | ✅ | Binomial | ✅
 | ? | Roll | ✅ | Deal | ✅
@@ -64,10 +64,20 @@ List of supported glyphs and operations:
 | ⍒ | Grade Down | ✅ | - | -
 | ¯ | High minus (negative literal) | ✅ | - | -
 | ∘. | - | - | Outer Product | ✅
-| . | - | - | Inner Product | -
+| f.g | - | - | Inner Product | ✅
 | ← | - | - | Assignment | ✅
 | {⍵} | - | - | Dfns (lambdas) | ✅
 | ⍵ ⍺ | Right/Left arg | ✅ | - | -
+| ∇ | Self-reference | ✅ | - | -
+| ⋄ : | Guards / Statements | ✅ | - | -
+| ⊃ | First | ✅ | - | -
+| ∪ | Unique | ✅ | Union | ✅
+| ∩ | - | - | Intersection | ✅
+| ~ | Not | ✅ | Without | ✅
+| ⊥ | - | - | Decode | ✅
+| ⊤ | - | - | Encode | ✅
+| ⌷ | - | - | Index | ✅
+| '' | String literals | ✅ | - | -
 
 - \* - Not implemented for complex numbers
 

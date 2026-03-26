@@ -134,6 +134,12 @@ Term -> Result<Expr, ()>:
     | Factor 'TILDE' Term {
         Ok(Expr::Without{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'INDEX' Term {
+        Ok(Expr::Index{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'MATINV' Term {
+        Ok(Expr::MatrixDivide{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor 'DECODE' Term {
         Ok(Expr::Decode{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
@@ -232,6 +238,9 @@ MonadicFactor -> Result<Expr, ()>:
     | 'TILDE' Term {
         Ok(Expr::Not{ span: $span, arg: Box::new($2?) })
       }
+    | 'MATINV' Term {
+        Ok(Expr::MatrixInverse{ span: $span, arg: Box::new($2?) })
+      }
     ;
 
 DfnBody -> Result<Expr, ()>:
@@ -293,6 +302,9 @@ Factor -> Result<Expr, ()>:
     }
     | 'ALPHA' {
         Ok(Expr::Alpha { span: $span })
+    }
+    | 'STRING' {
+        Ok(Expr::StringLiteral { span: $span })
     }
     ;
 
@@ -590,6 +602,23 @@ pub enum Expr {
     Not {
         span: Span,
         arg: Box<Expr>,
+    },
+    MatrixInverse {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Index {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    MatrixDivide {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    StringLiteral {
+        span: Span,
     },
     OuterProduct {
         span: Span,
