@@ -263,4 +263,19 @@ impl Val {
     pub fn is_scalar(&self) -> bool {
         self.shape.is_empty()
     }
+
+    pub fn from_f64s(values: &[f64]) -> Self {
+        let data: Vec<Scalar> = values.iter().map(|&v| {
+            if v.fract() == 0.0 && v.abs() < i64::MAX as f64 {
+                Scalar::Integer(v as i64)
+            } else {
+                Scalar::Float(v)
+            }
+        }).collect();
+        if data.len() == 1 {
+            Val::scalar(data[0])
+        } else {
+            Val::vector(data)
+        }
+    }
 }

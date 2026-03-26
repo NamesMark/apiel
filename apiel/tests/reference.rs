@@ -210,6 +210,8 @@ fn reference_tests() {
         // Dfns (dyadic)
         ("2 {⍺+⍵} 3",                  &[5.0],                                 "dfn dyadic add"),
         ("10 {⍺×⍵} 1 2 3",             &[10.0, 20.0, 30.0],                   "dfn dyadic mul vector"),
+        ("{⍵ + {⍵×2} 3} 10",           &[16.0],                                "nested dfn scoping"),
+        ("5 {⍺ + {⍵×⍵} ⍵} 3",         &[14.0],                                "nested dfn alpha omega"),
         // Expand (\ dyadic)
         ("1 0 1 0 1 \\ 1 2 3",          &[1.0, 0.0, 2.0, 0.0, 3.0],          "expand with zeros"),
         ("1 1 0 1 \\ 1 2 3",            &[1.0, 2.0, 0.0, 3.0],               "expand insert zero"),
@@ -266,4 +268,19 @@ fn variables_and_assignment() {
     assert_apl_env("a × b", &mut env, &[5.0, 10.0, 15.0], "scalar times vector");
     assert_apl_env("c←a+10", &mut env, &[15.0], "assign computed");
     assert_apl_env("⍳ a", &mut env, &[1.0, 2.0, 3.0, 4.0, 5.0], "iota of variable");
+}
+
+#[test]
+fn macro_omega_alpha() {
+    // Monadic: pass ⍵ from Rust
+    let result = apl!("⍵ + 1", omega: &[1.0, 2.0, 3.0]).unwrap();
+    assert_eq!(result, vec![2.0, 3.0, 4.0]);
+
+    // Dyadic: pass ⍺ and ⍵ from Rust
+    let result = apl!("⍺ × ⍵", alpha: &[10.0], omega: &[1.0, 2.0, 3.0]).unwrap();
+    assert_eq!(result, vec![10.0, 20.0, 30.0]);
+
+    // Complex expression with Rust data
+    let result = apl!("+/ ⍵", omega: &[1.0, 2.0, 3.0, 4.0, 5.0]).unwrap();
+    assert_eq!(result, vec![15.0]);
 }
