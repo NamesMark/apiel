@@ -73,6 +73,36 @@ Term -> Result<Expr, ()>:
     | Factor 'ROTATE' Term {
         Ok(Expr::Rotate{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'AND' Term {
+        Ok(Expr::And{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'OR' Term {
+        Ok(Expr::Or{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'NAND' Term {
+        Ok(Expr::Nand{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'NOR' Term {
+        Ok(Expr::Nor{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor '/' Term {
+        Ok(Expr::Replicate{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'TAKE' Term {
+        Ok(Expr::Take{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'DROP' Term {
+        Ok(Expr::Drop{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'ASSIGN' Term {
+        Ok(Expr::Assign{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'OUTERPRODUCT' Operator Term {
+        match $3 {
+            Ok(op) => Ok(Expr::OuterProduct{ span: $span, lhs: Box::new($1?), operator: op, rhs: Box::new($4?) }),
+            Err(_) => Err(())
+        }
+      }
     | MonadicFactor {
         Ok($1?)
       }
@@ -141,6 +171,12 @@ MonadicFactor -> Result<Expr, ()>:
     | 'TRANSPOSE' Term {
         Ok(Expr::Transpose{ span: $span, arg: Box::new($2?) })
       }
+    | 'GRADEUP' Term {
+        Ok(Expr::GradeUp{ span: $span, arg: Box::new($2?) })
+      }
+    | 'GRADEDN' Term {
+        Ok(Expr::GradeDown{ span: $span, arg: Box::new($2?) })
+      }
     ;
 
 Factor -> Result<Expr, ()>:
@@ -187,6 +223,12 @@ Factor -> Result<Expr, ()>:
             Err(_) => Err(())
         }
     }
+    | Operator '\' Term {
+        match $1 {
+            Ok(op) => Ok(Expr::Scan{ span: $span, operator: op, term: Box::new($3?) }),
+            Err(_) => Err(())
+        }
+    }
     ;
 
     Operator -> Result<Operator, ()>:
@@ -194,6 +236,11 @@ Factor -> Result<Expr, ()>:
     | '-' { Ok(Operator::Subtract) }
     | '×' { Ok(Operator::Multiply) }
     | '÷' { Ok(Operator::Divide) }
+    | 'EQ' { Ok(Operator::Equal) }
+    | 'LT' { Ok(Operator::LessThan) }
+    | 'GT' { Ok(Operator::GreaterThan) }
+    | '⌈' { Ok(Operator::Max) }
+    | '⌊' { Ok(Operator::Min) }
     ;
 
 
@@ -318,6 +365,57 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
+    And {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Or {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Nand {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Nor {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Replicate {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Take {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Drop {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Assign {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    OuterProduct {
+        span: Span,
+        lhs: Box<Expr>,
+        operator: Operator,
+        rhs: Box<Expr>,
+    },
+    Scan {
+        span: Span,
+        operator: Operator,
+        term: Box<Expr>,
+    },
 
     // Monadic
 
@@ -334,6 +432,14 @@ pub enum Expr {
         arg: Box<Expr>,
     },
     Transpose {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    GradeUp {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    GradeDown {
         span: Span,
         arg: Box<Expr>,
     },
@@ -428,4 +534,9 @@ pub enum Operator {
     Subtract,
     Multiply,
     Divide,
+    Equal,
+    LessThan,
+    GreaterThan,
+    Max,
+    Min,
 }
