@@ -269,6 +269,24 @@ pub fn eval(
 
             Ok(Val::new(rhs_eval.shape, data))
         }
+        Expr::Reshape { span, lhs, rhs } => {
+            debug!("Dyadic Reshape");
+            let lhs_eval = eval(lexer, *lhs)?;
+            let rhs_eval = eval(lexer, *rhs)?;
+
+            let new_shape: Vec<usize> = lhs_eval.data.iter()
+                .map(|s| usize::try_from(*s).map_err(|_| (span, "Reshape dimensions must be non-negative integers")))
+                .collect::<Result<Vec<usize>, _>>()?;
+
+            let total: usize = new_shape.iter().product::<usize>().max(1);
+            let data: Vec<Scalar> = rhs_eval.data.iter()
+                .copied()
+                .cycle()
+                .take(total)
+                .collect();
+
+            Ok(Val::new(new_shape, data))
+        }
         Expr::Equal { span, lhs, rhs } => {
             debug!("Dyadic Equal");
             let lhs_eval = eval(lexer, *lhs)?;
@@ -524,6 +542,14 @@ pub fn eval(
                 })
                 .collect();
 
+            Ok(Val::vector(data))
+        }
+        Expr::Shape { arg, .. } => {
+            debug!("Monadic Shape");
+            let arg_eval = eval(lexer, *arg)?;
+            let data: Vec<Scalar> = arg_eval.shape.iter()
+                .map(|&s| Scalar::Integer(s as i64))
+                .collect();
             Ok(Val::vector(data))
         }
         Expr::Reduce {

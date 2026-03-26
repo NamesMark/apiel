@@ -64,6 +64,9 @@ Term -> Result<Expr, ()>:
     | Factor 'GTE' Term {
         Ok(Expr::GreaterEqual{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'RHO' Term {
+        Ok(Expr::Reshape{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | MonadicFactor {
         Ok($1?)
       }
@@ -119,6 +122,9 @@ MonadicFactor -> Result<Expr, ()>:
       }
     | 'IOTA_U' Term {
         Ok(Expr::Where{ span: $span, arg: Box::new($2?) })
+      }
+    | 'RHO' Term {
+        Ok(Expr::Shape{ span: $span, arg: Box::new($2?) })
       }
     ;
 
@@ -282,8 +288,18 @@ pub enum Expr {
         rhs: Box<Expr>,
     },
 
+    Reshape {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+
     // Monadic
 
+    Shape {
+        span: Span,
+        arg: Box<Expr>,
+    },
     Exp {
         span: Span,
         arg: Box<Expr>,
