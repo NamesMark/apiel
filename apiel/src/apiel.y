@@ -73,6 +73,9 @@ Term -> Result<Expr, ()>:
     | Factor 'ROTATE' Term {
         Ok(Expr::Rotate{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'CIRCLE' Term {
+        Ok(Expr::Circular{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor 'AND' Term {
         Ok(Expr::And{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
@@ -88,20 +91,29 @@ Term -> Result<Expr, ()>:
     | Factor '/' Term {
         Ok(Expr::Replicate{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor '\' Term {
+        Ok(Expr::Expand{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor 'TAKE' Term {
         Ok(Expr::Take{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
     | Factor 'DROP' Term {
         Ok(Expr::Drop{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
-    | Factor 'ASSIGN' Term {
-        Ok(Expr::Assign{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+    | 'NAME' 'ASSIGN' Term {
+        Ok(Expr::Assign{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($3?) })
       }
     | Factor 'OUTERPRODUCT' Operator Term {
         match $3 {
             Ok(op) => Ok(Expr::OuterProduct{ span: $span, lhs: Box::new($1?), operator: op, rhs: Box::new($4?) }),
             Err(_) => Err(())
         }
+      }
+    | Factor '{' Expr '}' Term {
+        Ok(Expr::DyadicDfn{ span: $span, lhs: Box::new($1?), body: Box::new($3?), rhs: Box::new($5?) })
+      }
+    | '{' Expr '}' Term {
+        Ok(Expr::MonadicDfn{ span: $span, body: Box::new($2?), rhs: Box::new($4?) })
       }
     | MonadicFactor {
         Ok($1?)
@@ -213,6 +225,18 @@ Factor -> Result<Expr, ()>:
             Ok(_value) => Ok(Expr::ScalarFloat { span: $span }),
             Err(_) => Err(())
         }
+    }
+    | 'NAME' {
+        match $1 {
+            Ok(_) => Ok(Expr::Variable { span: $span, name: $lexer.span_str($span).to_string() }),
+            Err(_) => Err(())
+        }
+    }
+    | 'OMEGA' {
+        Ok(Expr::Omega { span: $span })
+    }
+    | 'ALPHA' {
+        Ok(Expr::Alpha { span: $span })
     }
     ;
 
@@ -402,8 +426,29 @@ pub enum Expr {
     },
     Assign {
         span: Span,
-        lhs: Box<Expr>,
+        name: String,
         rhs: Box<Expr>,
+    },
+    MonadicDfn {
+        span: Span,
+        body: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    DyadicDfn {
+        span: Span,
+        lhs: Box<Expr>,
+        body: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Variable {
+        span: Span,
+        name: String,
+    },
+    Omega {
+        span: Span,
+    },
+    Alpha {
+        span: Span,
     },
     OuterProduct {
         span: Span,

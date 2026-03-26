@@ -41,9 +41,12 @@
 \⍒ "GRADEDN"
 ∘\. "OUTERPRODUCT"
 \← "ASSIGN"
+\⍵ "OMEGA"
+\⍺ "ALPHA"
 \( "("
 \) ")"
 \{ "{"
 \} "}"
+[a-zA-Z_][a-zA-Z0-9_]* "NAME"
 [\t ]+ ;
 . "UNMATCHED"
