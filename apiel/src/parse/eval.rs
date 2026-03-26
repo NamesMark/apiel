@@ -509,6 +509,7 @@ pub fn eval(
             debug!("Scalar Float");
             lexer
                 .span_str(span)
+                .replace('¯', "-")
                 .parse::<f64>()
                 .map(|num| Val::scalar(Scalar::Float(num)))
                 .map_err(|_| (span, "cannot be represented as a valid number"))
@@ -517,6 +518,7 @@ pub fn eval(
             debug!("Scalar Integer");
             lexer
                 .span_str(span)
+                .replace('¯', "-")
                 .parse::<i64>()
                 .map(|num| Val::scalar(Scalar::Integer(num)))
                 .map_err(|_| (span, "cannot be represented as a valid number"))
