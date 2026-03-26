@@ -40,12 +40,12 @@ Term -> Result<Expr, ()>:
     | Factor 'LOG' Term {
         Ok(Expr::Log{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
-    //| Factor 'IOTA' Term {
-    //    Ok(Expr::IndexOf{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
-    //  }
-    //| Factor 'IOTA_U' Term {
-    //    Ok(Expr::IntervalIndex{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
-    //  }
+    | Factor 'IOTA' Term {
+        Ok(Expr::IndexOf{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'IOTA_U' Term {
+        Ok(Expr::IntervalIndex{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | MonadicFactor {
         Ok($1?)
       }
