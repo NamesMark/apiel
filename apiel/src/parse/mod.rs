@@ -10,9 +10,6 @@ lrpar_mod!("apiel.y");
 
 use apiel_y::Expr;
 
-#[cfg(feature = "debug")]
-use lrlex::DefaultLexeme;
-
 pub fn parse_and_evaluate(line: &str) -> Result<Vec<f64>, String> {
     let lexerdef = apiel_l::lexerdef();
     let lexer = lexerdef.lexer(line);

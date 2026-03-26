@@ -49,8 +49,8 @@ Term -> Result<Expr, ()>:
     | MonadicFactor {
         Ok($1?)
       }
-    | Reduction { $1 } 
-    | Factor { $1 } 
+    | Reduction { $1 }
+    | Factor { $1 }
     ;
 
 MonadicFactor -> Result<Expr, ()>:
@@ -113,22 +113,17 @@ Factor -> Result<Expr, ()>:
                 let full_str = $lexer.span_str($span);
                 let mut current_pos = 0;
                 let mut elements = Vec::new();
-                
-                #[cfg(feature = "debug")]
-                {
-                    !("Trying to parse vec: {}", full_str);
-                }
 
                 for value in full_str.split_whitespace() {
                     let start = full_str[current_pos..].find(value).unwrap_or(0) + current_pos;
                     let end = start + value.len();
-                    current_pos = end; 
+                    current_pos = end;
 
                     elements.push(Expr::ScalarInteger { span: Span::new(start + $span.start(), end + $span.start()) });
                 }
                 elements
             },
-            Err(_) => Vec::new(), 
+            Err(_) => Vec::new(),
         };
         Ok(Expr::Vector { span: $span, elements })
     }
@@ -308,7 +303,7 @@ pub enum Expr {
 
     Reduce {
         span: Span,
-        operator: Operator, 
+        operator: Operator,
         term: Box<Expr>,
     },
 
