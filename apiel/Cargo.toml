@@ -9,18 +9,18 @@ license = "MIT"
 build = "build.rs"
 
 [build-dependencies]
-cfgrammar = "0.13.10"
-lrlex = "0.13.10"
-lrpar = "0.13.10"
+cfgrammar.workspace = true
+lrlex.workspace = true
+lrpar.workspace = true
 
 [dependencies]
-cfgrammar = "0.13.10"
-conv = "0.3.3"
-eyre = "0.6.12"
-lrlex = "0.13.10"
-lrpar = "0.13.10"
-num-traits = "0.2.19"
-rand = "0.8.5"
-tracing = "0.1.44"
+cfgrammar.workspace = true
+conv.workspace = true
+eyre.workspace = true
+lrlex.workspace = true
+lrpar.workspace = true
+num-traits.workspace = true
+rand.workspace = true
+tracing.workspace = true
 
 [features]
