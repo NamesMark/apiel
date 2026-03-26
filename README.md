@@ -31,7 +31,7 @@ List of supported glyphs and operations:
 | ÷ | Reciprocal | ✅ | Division | ✅
 | * | Exponentiation | ✅ | Raising to power | ✅
 | ⍟ | Natural logarithm | ✅ | Logarithm | ✅
-| ⌹ | Matrix inverse | ✅ | Matrix divide | -
+| ⌹ | Matrix inverse | ✅ | Matrix divide | ✅
 | ○ | Pi Multiple | ✅ | Circular functions | ✅
 | ! | Factorial | ✅ | Binomial | ✅
 | ? | Roll | ✅ | Deal | ✅
