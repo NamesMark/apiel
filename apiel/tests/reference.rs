@@ -104,6 +104,14 @@ fn reference_tests() {
         ("2 4 6 8 ⍸ 3 5 7",            &[1.0, 2.0, 3.0],                      "interval index: between"),
         ("10 20 30 40 ⍸ 15 25 35 45",   &[1.0, 2.0, 3.0, 4.0],                "interval index: between tens"),
         ("1 3 5 7 ⍸ 0 1 2 3 4 5 6 7 8", &[0.0,1.0,1.0,2.0,2.0,3.0,3.0,4.0,4.0], "interval index: full range"),
+        // High minus (¯)
+        ("¯3",                          &[-3.0],                                "high minus scalar"),
+        ("¯3 + 5",                      &[2.0],                                 "high minus in expr"),
+        ("1 ¯2 3 ¯4",                   &[1.0, -2.0, 3.0, -4.0],              "high minus in vector"),
+        ("¯1 + ¯2",                     &[-3.0],                                "high minus both operands"),
+        ("2 × ¯3",                      &[-6.0],                                "high minus rhs"),
+        ("¯3.14",                       &[-3.14],                               "high minus float"),
+        ("- ¯5",                        &[5.0],                                 "negate high minus"),
     ];
 
     let mut failures = Vec::new();
