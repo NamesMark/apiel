@@ -67,6 +67,12 @@ Term -> Result<Expr, ()>:
     | Factor 'RHO' Term {
         Ok(Expr::Reshape{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor ',' Term {
+        Ok(Expr::Catenate{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'ROTATE' Term {
+        Ok(Expr::Rotate{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | MonadicFactor {
         Ok($1?)
       }
@@ -125,6 +131,15 @@ MonadicFactor -> Result<Expr, ()>:
       }
     | 'RHO' Term {
         Ok(Expr::Shape{ span: $span, arg: Box::new($2?) })
+      }
+    | ',' Term {
+        Ok(Expr::Ravel{ span: $span, arg: Box::new($2?) })
+      }
+    | 'ROTATE' Term {
+        Ok(Expr::Reverse{ span: $span, arg: Box::new($2?) })
+      }
+    | 'TRANSPOSE' Term {
+        Ok(Expr::Transpose{ span: $span, arg: Box::new($2?) })
       }
     ;
 
@@ -293,10 +308,32 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
+    Catenate {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Rotate {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
 
     // Monadic
 
     Shape {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Ravel {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Reverse {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Transpose {
         span: Span,
         arg: Box<Expr>,
     },

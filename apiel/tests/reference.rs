@@ -139,6 +139,26 @@ fn reference_tests() {
         ("2 3 ⍴ ⍳ 6",                   &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],     "reshape matrix"),
         ("2 3 ⍴ 1",                     &[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],     "reshape scalar cycle"),
         ("⍴ 2 3 ⍴ ⍳ 6",                &[2.0, 3.0],                           "shape of reshaped matrix"),
+        // Ravel (monadic ,)
+        (", 2 3 ⍴ ⍳ 6",                &[1.0,2.0,3.0,4.0,5.0,6.0],           "ravel matrix"),
+        (", 5",                          &[5.0],                                "ravel scalar"),
+        (", 1 2 3",                      &[1.0, 2.0, 3.0],                     "ravel vector"),
+        // Catenate (dyadic ,)
+        ("1 2 3 , 4 5 6",               &[1.0,2.0,3.0,4.0,5.0,6.0],          "catenate vectors"),
+        ("1 , 2 3",                      &[1.0, 2.0, 3.0],                     "catenate scalar vector"),
+        ("1 2 , 3",                      &[1.0, 2.0, 3.0],                     "catenate vector scalar"),
+        // Reverse (monadic ⌽)
+        ("⌽ 1 2 3 4 5",                 &[5.0,4.0,3.0,2.0,1.0],              "reverse vector"),
+        ("⌽ 5",                          &[5.0],                                "reverse scalar"),
+        // Rotate (dyadic ⌽)
+        ("2 ⌽ 1 2 3 4 5",              &[3.0,4.0,5.0,1.0,2.0],              "rotate left 2"),
+        ("¯1 ⌽ 1 2 3 4 5",             &[5.0,1.0,2.0,3.0,4.0],              "rotate right 1"),
+        ("0 ⌽ 1 2 3 4 5",              &[1.0,2.0,3.0,4.0,5.0],              "rotate zero"),
+        // Transpose (monadic ⍉)
+        ("⍉ 2 3 ⍴ ⍳ 6",                &[1.0,4.0,2.0,5.0,3.0,6.0],          "transpose matrix"),
+        ("⍴ ⍉ 2 3 ⍴ ⍳ 6",              &[3.0, 2.0],                          "shape of transposed"),
+        ("⍉ 1 2 3",                      &[1.0, 2.0, 3.0],                     "transpose vector noop"),
+        ("⍉ 5",                          &[5.0],                                "transpose scalar noop"),
     ];
 
     let mut failures = Vec::new();
