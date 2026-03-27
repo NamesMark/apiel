@@ -59,6 +59,8 @@
 '[^']*' "STRING"
 \⊣ "LEFT"
 \⊢ "RIGHT"
+\≡ "MATCH"
+\≢ "NOTMATCH"
 \⋄ "DIAMOND"
 : ":"
 \( "("

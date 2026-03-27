@@ -298,6 +298,36 @@ impl Val {
         self.shape.is_empty()
     }
 
+    pub fn depth(&self) -> usize {
+        if self.is_scalar() {
+            match &self.data[0] {
+                Scalar::Nested(inner) => 1 + inner.depth(),
+                _ => 0,
+            }
+        } else {
+            let has_nested = self.data.iter().any(|s| matches!(s, Scalar::Nested(_)));
+            if has_nested {
+                1 + self.data.iter().map(|s| match s {
+                    Scalar::Nested(inner) => inner.depth(),
+                    _ => 0,
+                }).max().unwrap_or(0)
+            } else {
+                1
+            }
+        }
+    }
+
+    pub fn matches_val(&self, other: &Val) -> bool {
+        self.shape == other.shape
+            && self.data.len() == other.data.len()
+            && self.data.iter().zip(other.data.iter()).all(|(a, b)| {
+                match (a, b) {
+                    (Scalar::Nested(va), Scalar::Nested(vb)) => va.matches_val(vb),
+                    _ => a == b,
+                }
+            })
+    }
+
     pub fn from_f64s(values: &[f64]) -> Self {
         let data: Vec<Scalar> = values
             .iter()

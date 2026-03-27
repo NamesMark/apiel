@@ -416,6 +416,9 @@ fn reference_tests() {
         ("5 ⊣ 42", &[5.0], "dyadic left tack returns left"),
         ("1 2 3 ⊢ 4 5 6", &[4.0, 5.0, 6.0], "dyadic right tack vectors"),
         ("1 2 3 ⊣ 4 5 6", &[1.0, 2.0, 3.0], "dyadic left tack vectors"),
+        // Tally ≢
+        ("≢ 1 2 3 4 5", &[5.0], "tally of vector"),
+        ("≢ 42", &[1.0], "tally of scalar"),
     ];
 
     let mut failures = Vec::new();
@@ -604,4 +607,33 @@ fn nested_arrays() {
 
     let val = eval_to_val("⌽¨ (⊂ 1 2 3) , (⊂ 4 5) , (⊂ 6)", &mut env).unwrap();
     assert_eq!(format_val(&val), "(3 2 1) (5 4) (6)");
+}
+
+#[test]
+fn depth_and_match() {
+    let mut env = Env::new();
+
+    let val = eval_to_val("≡ 42", &mut env).unwrap();
+    assert_eq!(format_val(&val), "0", "depth of scalar");
+
+    let val = eval_to_val("≡ 1 2 3", &mut env).unwrap();
+    assert_eq!(format_val(&val), "1", "depth of flat vector");
+
+    let val = eval_to_val("≡ ⊂ 1 2 3", &mut env).unwrap();
+    assert_eq!(format_val(&val), "2", "depth of enclosed vector");
+
+    let val = eval_to_val("1 2 3 ≡ 1 2 3", &mut env).unwrap();
+    assert_eq!(format_val(&val), "1", "match identical vectors");
+
+    let val = eval_to_val("1 2 3 ≡ 1 2 4", &mut env).unwrap();
+    assert_eq!(format_val(&val), "0", "match different vectors");
+
+    let val = eval_to_val("1 2 3 ≢ 1 2 4", &mut env).unwrap();
+    assert_eq!(format_val(&val), "1", "not match different vectors");
+
+    let val = eval_to_val("1 2 3 ≢ 1 2 3", &mut env).unwrap();
+    assert_eq!(format_val(&val), "0", "not match identical vectors");
+
+    let val = eval_to_val("(2 3 ⍴ ⍳ 6) ≡ 1 2 3 4 5 6", &mut env).unwrap();
+    assert_eq!(format_val(&val), "0", "match: different shapes");
 }

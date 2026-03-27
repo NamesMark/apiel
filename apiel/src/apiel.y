@@ -155,6 +155,12 @@ Term -> Result<Expr, ()>:
     | Factor 'RIGHT' Term {
         Ok(Expr::Right{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'MATCH' Term {
+        Ok(Expr::Match{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'NOTMATCH' Term {
+        Ok(Expr::NotMatch{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor Operator 'DOT' Operator Term {
         match ($2, $4) {
             (Ok(f), Ok(g)) => Ok(Expr::InnerProduct{ span: $span, lhs: Box::new($1?), f, g, rhs: Box::new($5?) }),
@@ -264,6 +270,12 @@ MonadicFactor -> Result<Expr, ()>:
       }
     | 'RIGHT' Term {
         Ok(Expr::RightIdentity{ span: $span, arg: Box::new($2?) })
+      }
+    | 'MATCH' Term {
+        Ok(Expr::Depth{ span: $span, arg: Box::new($2?) })
+      }
+    | 'NOTMATCH' Term {
+        Ok(Expr::Tally{ span: $span, arg: Box::new($2?) })
       }
     | 'RHO' 'EACH' Term {
         Ok(Expr::MonadicEach{ span: $span, func: "shape".to_string(), arg: Box::new($3?) })
@@ -691,6 +703,16 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
+    Match {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    NotMatch {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
     StringLiteral {
         span: Span,
     },
@@ -801,6 +823,14 @@ pub enum Expr {
         arg: Box<Expr>,
     },
     RightIdentity {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Depth {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Tally {
         span: Span,
         arg: Box<Expr>,
     },
