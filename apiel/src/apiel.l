@@ -61,6 +61,7 @@
 \. "DOT"
 \⌷ "INDEX"
 \⌹ "MATINV"
+@ "AT"
 '[^']*' "STRING"
 \⊣ "LEFT"
 \⊢ "RIGHT"

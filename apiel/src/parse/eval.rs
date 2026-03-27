@@ -1135,6 +1135,39 @@ pub fn eval(
             final_shape.extend_from_slice(&rcs);
             Ok(Val::new(final_shape, results))
         }
+        Expr::AtOp { span, body, indices, arg } => {
+            debug!("At Operator");
+            let idx_val = eval(lexer, *indices, env)?;
+            let mut arg_val = eval(lexer, *arg, env)?;
+            let body_rc = Rc::new(*body);
+
+            // Convert 1-based indices to 0-based
+            let idxs: Vec<usize> = idx_val.data.iter()
+                .map(|s| {
+                    let i: usize = s.clone().try_into().map_err(|_| (span, "At index must be integer"))?;
+                    if i < 1 || i > arg_val.data.len() {
+                        return Err((span, "At index out of bounds"));
+                    }
+                    Ok(i - 1)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            // Apply function to each indexed element
+            for &idx in &idxs {
+                let elem = Val::scalar(arg_val.data[idx].clone());
+                let stored = StoredDfn {
+                    body: Rc::clone(&body_rc),
+                    source: lexer.span_str(span).to_string(),
+                };
+                let mut dfn_env = env.clone();
+                dfn_env.vars.insert("⍵".to_string(), elem);
+                dfn_env.fns.insert("∇".to_string(), stored);
+                let result = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
+                arg_val.data[idx] = result.data[0].clone();
+            }
+
+            Ok(arg_val)
+        }
         Expr::PowerOp { span, body, count, arg } => {
             debug!("Power Operator (dfn)");
             let count_val = eval(lexer, *count, env)?;
