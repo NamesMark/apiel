@@ -1631,6 +1631,29 @@ pub fn eval(
             debug!("Monadic Right (identity)");
             eval(lexer, *arg, env)
         }
+        Expr::Tally { span: _, arg } => {
+            debug!("Monadic Tally");
+            let arg_eval = eval(lexer, *arg, env)?;
+            let tally = if arg_eval.shape.is_empty() { 1 } else { arg_eval.shape[0] };
+            Ok(Val::scalar(Scalar::Integer(tally as i64)))
+        }
+        Expr::Depth { span: _, arg } => {
+            debug!("Monadic Depth");
+            let arg_eval = eval(lexer, *arg, env)?;
+            Ok(Val::scalar(Scalar::Integer(arg_eval.depth() as i64)))
+        }
+        Expr::Match { span: _, lhs, rhs } => {
+            debug!("Dyadic Match");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            Ok(Val::scalar(Scalar::Integer(if lhs_eval.matches_val(&rhs_eval) { 1 } else { 0 })))
+        }
+        Expr::NotMatch { span: _, lhs, rhs } => {
+            debug!("Dyadic Not Match");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            Ok(Val::scalar(Scalar::Integer(if lhs_eval.matches_val(&rhs_eval) { 0 } else { 1 })))
+        }
         Expr::StringLiteral { span } => {
             debug!("String Literal");
             let raw = lexer.span_str(span);
