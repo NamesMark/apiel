@@ -1,16 +1,44 @@
-# apiel
-This is the cli tool to showcase **apiel**.
+# apiel-cli
 
-**apiel** is a small subset of the [APL programming language](https://en.wikipedia.org/wiki/APL_(programming_language)) implemented in Rust. 
+Interactive REPL for [apiel](https://crates.io/crates/apiel), a subset of the APL programming language implemented in Rust.
+
+## Install
+
+```
+cargo install apiel-cli
+```
+
+## Usage
+
+```
+$ apiel-cli
+>>> ⍳ 5
+1 2 3 4 5
+>>> +/ ⍳ 10
+55
+>>> 2 3 ⍴ ⍳ 6
+1 2 3 4 5 6
+>>> ⍴ 2 3 ⍴ ⍳ 6
+2 3
+>>> ⌽ 'hello'
+olleh
+```
+
+Variables and functions persist across lines:
+
+```
+>>> data←⍳ 10
+>>> +/ data
+55
+>>> double←{⍵×2}
+>>> double 1 2 3
+2 4 6
+>>> {⍵≤1: ⍵ ⋄ ⍵×∇ ⍵-1} 5
+120
+```
+
+See the [apiel](https://crates.io/crates/apiel) crate for the full support info.
 
 ## Affiliation
 
-This was created as a capstone project for the [rustcamp](https://github.com/rust-lang-ua/rustcamp), a Rust bootcamp organized by the Ukrainian Rust Community ([website](https://www.uarust.com), [linked in](https://www.linkedin.com/company/ukrainian-rust-community), [telegram](https://t.me/rustlang_ua), [github](https://github.com/rust-lang-ua), [youtube](https://www.youtube.com/channel/UCmkAFUu2MVOX8ly0LjB6TMA), [twitter](https://twitter.com/rustukraine)).
-
-## Usage 
-
-```cargo run``` or ```RUST_LOG=debug cargo run``` for debugging output.
-
-Enter commands in the terminal.
-
-The list of supported glyphs can be found in the [main README](../README.md).
+Capstone project for the [rustcamp](https://github.com/rust-lang-ua/rustcamp) by the [Ukrainian Rust Community](https://www.uarust.com).
