@@ -438,6 +438,10 @@ fn reference_tests() {
         ("2 -⍨ 5", &[3.0], "commute: 5-2"),
         ("3 ÷⍨ 12", &[4.0], "commute: 12÷3"),
         ("2 *⍨ 3", &[9.0], "commute: 3*2=9"),
+        // Power operator ⍣
+        ("{⍵+1}⍣3 ⍳ 5", &[4.0, 5.0, 6.0, 7.0, 8.0], "power: increment 3 times"),
+        ("{⍵×2}⍣4 (1)", &[16.0], "power: double 4 times"),
+        ("{⍵+1}⍣0 (5)", &[5.0], "power 0 is identity"),
     ];
 
     let mut failures = Vec::new();
