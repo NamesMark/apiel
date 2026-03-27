@@ -733,3 +733,13 @@ fn partitioned_enclose() {
     let val = eval_to_val("1 0 0 0 0 ⊂ 1 2 3 4 5", &mut env).unwrap();
     assert_eq!(format_val(&val), "(1 2 3 4 5)", "partition: single group");
 }
+
+#[test]
+fn modified_assignment() {
+    let mut env = Env::new();
+    assert_apl_env("x←5", &mut env, &[5.0], "assign x");
+    assert_apl_env("x+←3", &mut env, &[8.0], "modified assign x+←3");
+    assert_apl_env("x", &mut env, &[8.0], "x is now 8");
+    assert_apl_env("x×←2", &mut env, &[16.0], "modified assign x×←2");
+    assert_apl_env("x", &mut env, &[16.0], "x is now 16");
+}

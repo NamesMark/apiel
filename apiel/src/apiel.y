@@ -101,6 +101,35 @@ Term -> Result<Expr, ()>:
     | Factor 'DROP' Term {
         Ok(Expr::Drop{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | 'NAME' 'MODASSIGN' Term {
+        let op_str = $2.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default();
+        let op = match op_str.trim_end_matches('←') {
+            "+" => Ok(Operator::Add),
+            "-" => Ok(Operator::Subtract),
+            "×" => Ok(Operator::Multiply),
+            "÷" => Ok(Operator::Divide),
+            "*" => Ok(Operator::Power),
+            "⍟" => Ok(Operator::Log),
+            "!" => Ok(Operator::Binomial),
+            "|" => Ok(Operator::Residue),
+            "⌈" => Ok(Operator::Max),
+            "⌊" => Ok(Operator::Min),
+            "∧" => Ok(Operator::And),
+            "∨" => Ok(Operator::Or),
+            "⍲" => Ok(Operator::Nand),
+            "⍱" => Ok(Operator::Nor),
+            _ => Err(()),
+        };
+        match op {
+            Ok(operator) => Ok(Expr::ModifiedAssign{
+                span: $span,
+                name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(),
+                operator,
+                rhs: Box::new($3?),
+            }),
+            Err(_) => Err(()),
+        }
+      }
     | 'NAME' 'ASSIGN' Term {
         Ok(Expr::Assign{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($3?) })
       }
@@ -683,6 +712,12 @@ pub enum Expr {
         span: Span,
         name: String,
         body: Box<Expr>,
+    },
+    ModifiedAssign {
+        span: Span,
+        name: String,
+        operator: Operator,
+        rhs: Box<Expr>,
     },
     NamedMonadic {
         span: Span,
