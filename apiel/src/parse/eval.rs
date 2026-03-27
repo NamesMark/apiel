@@ -706,6 +706,41 @@ pub fn eval(
             env.vars.insert(name, result.clone());
             Ok(result)
         }
+        Expr::IndexedAssign { span, name, indices, rhs } => {
+            debug!("Indexed Assign: {name}");
+            let mut current = env.vars.get(&name).cloned()
+                .ok_or((span, "Undefined variable for indexed assignment"))?;
+            let idx_val = eval(lexer, *indices, env)?;
+            let rhs_val = eval(lexer, *rhs, env)?;
+
+            let idxs: Vec<usize> = idx_val.data.iter()
+                .map(|s| {
+                    let i: usize = s.clone().try_into().map_err(|_| (span, "Index must be integer"))?;
+                    if i < 1 || i > current.data.len() {
+                        return Err((span, "Index out of bounds"));
+                    }
+                    Ok(i - 1) // 1-based to 0-based
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            if rhs_val.is_scalar() {
+                // Scalar: set all indexed positions to same value
+                for &idx in &idxs {
+                    current.data[idx] = rhs_val.data[0].clone();
+                }
+            } else {
+                // Vector: must match length
+                if rhs_val.data.len() != idxs.len() {
+                    return Err((span, "Indexed assign: value length must match index count"));
+                }
+                for (i, &idx) in idxs.iter().enumerate() {
+                    current.data[idx] = rhs_val.data[i].clone();
+                }
+            }
+
+            env.vars.insert(name, current.clone());
+            Ok(current)
+        }
         Expr::OuterProduct {
             span,
             lhs,

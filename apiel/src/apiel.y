@@ -130,6 +130,9 @@ Term -> Result<Expr, ()>:
             Err(_) => Err(()),
         }
       }
+    | 'NAME' '[' Expr ']' 'ASSIGN' Term {
+        Ok(Expr::IndexedAssign{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), indices: Box::new($3?), rhs: Box::new($6?) })
+      }
     | 'NAME' 'ASSIGN' Term {
         Ok(Expr::Assign{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($3?) })
       }
@@ -717,6 +720,12 @@ pub enum Expr {
         span: Span,
         name: String,
         operator: Operator,
+        rhs: Box<Expr>,
+    },
+    IndexedAssign {
+        span: Span,
+        name: String,
+        indices: Box<Expr>,
         rhs: Box<Expr>,
     },
     NamedMonadic {
