@@ -584,14 +584,14 @@ pub fn eval(
             let len = rhs_eval.data.len();
             let abs_n = n.unsigned_abs() as usize;
             let mut data = if n >= 0 {
-                let mut d: Vec<Scalar> = rhs_eval.data.iter().cloned().take(abs_n).collect();
+                let mut d: Vec<Scalar> = rhs_eval.data.iter().take(abs_n).cloned().collect();
                 while d.len() < abs_n {
                     d.push(Scalar::Integer(0));
                 }
                 d
             } else {
-                let skip = if abs_n <= len { len - abs_n } else { 0 };
-                let mut d: Vec<Scalar> = rhs_eval.data.iter().cloned().skip(skip).collect();
+                let skip = len.saturating_sub(abs_n);
+                let mut d: Vec<Scalar> = rhs_eval.data.iter().skip(skip).cloned().collect();
                 while d.len() < abs_n {
                     d.insert(0, Scalar::Integer(0));
                 }
@@ -1582,9 +1582,7 @@ pub fn eval(
                     return Err((span, "Matrix divide: singular matrix"));
                 }
                 for j in 0..w {
-                    let tmp = aug[col * w + j];
-                    aug[col * w + j] = aug[pivot_row * w + j];
-                    aug[pivot_row * w + j] = tmp;
+                    aug.swap(col * w + j, pivot_row * w + j);
                 }
                 let pivot = aug[col * w + col];
                 for j in 0..w {
