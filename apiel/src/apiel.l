@@ -42,6 +42,7 @@
 ∘\. "OUTERPRODUCT"
 \∘ "COMPOSE"
 \⍥ "OVER"
+[\+\-×÷\*⍟○!\?|⌈⌊∧∨⍲⍱=≠<>≤≥]← "MODASSIGN"
 \← "ASSIGN"
 \⍵ "OMEGA"
 \⍺ "ALPHA"

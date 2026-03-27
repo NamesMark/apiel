@@ -694,6 +694,18 @@ pub fn eval(
             env.vars.insert(name, val.clone());
             Ok(val)
         }
+        Expr::ModifiedAssign { span, name, operator, rhs } => {
+            debug!("Modified Assign: {name}");
+            let current = env.vars.get(&name).cloned()
+                .ok_or((span, "Undefined variable for modified assignment"))?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let op_fn = get_operator_fn(operator);
+            let result = apply_dyadic_operation(span, &current, &rhs_eval, |a, b| {
+                op_fn(a, b).ok_or_eyre("Modified assignment operation failed")
+            })?;
+            env.vars.insert(name, result.clone());
+            Ok(result)
+        }
         Expr::OuterProduct {
             span,
             lhs,
