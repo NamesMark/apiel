@@ -459,6 +459,9 @@ fn reference_tests() {
         // Over ⍥
         ("{⍵×2}⍥{⍵+1} 5", &[12.0], "over monadic: (5+1)×2 = 12"),
         ("3 {⍺+⍵}⍥{⍵×⍵} 4", &[25.0], "over dyadic: 3²+4² = 25"),
+        // At operator @
+        ("{⍵×10}@(2 3) ⊢ ⍳ 5", &[1.0, 20.0, 30.0, 4.0, 5.0], "at: multiply at indices"),
+        ("{0}@(1 3 5) ⊢ ⍳ 5", &[0.0, 2.0, 0.0, 4.0, 0.0], "at: replace at indices"),
     ];
 
     let mut failures = Vec::new();

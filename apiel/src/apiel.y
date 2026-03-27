@@ -131,6 +131,9 @@ Term -> Result<Expr, ()>:
     | Factor '{' DfnBody '}' 'OVER' '{' DfnBody '}' Term {
         Ok(Expr::OverDyadicDfn{ span: $span, lhs: Box::new($1?), f: Box::new($3?), g: Box::new($7?), arg: Box::new($9?) })
       }
+    | '{' DfnBody '}' 'AT' Factor Term {
+        Ok(Expr::AtOp{ span: $span, body: Box::new($2?), indices: Box::new($5?), arg: Box::new($6?) })
+      }
     | '{' DfnBody '}' 'POWOP' Factor Term {
         Ok(Expr::PowerOp{ span: $span, body: Box::new($2?), count: Box::new($5?), arg: Box::new($6?) })
       }
@@ -606,6 +609,12 @@ pub enum Expr {
         span: Span,
         body: Box<Expr>,
         rhs: Box<Expr>,
+    },
+    AtOp {
+        span: Span,
+        body: Box<Expr>,
+        indices: Box<Expr>,
+        arg: Box<Expr>,
     },
     PowerOp {
         span: Span,
