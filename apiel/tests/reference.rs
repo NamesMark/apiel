@@ -743,3 +743,12 @@ fn modified_assignment() {
     assert_apl_env("x×←2", &mut env, &[16.0], "modified assign x×←2");
     assert_apl_env("x", &mut env, &[16.0], "x is now 16");
 }
+
+#[test]
+fn indexed_assignment() {
+    let mut env = Env::new();
+    assert_apl_env("x←1 2 3 4 5", &mut env, &[1.0, 2.0, 3.0, 4.0, 5.0], "assign vector");
+    assert_apl_env("x[3]←99", &mut env, &[1.0, 2.0, 99.0, 4.0, 5.0], "index assign single");
+    assert_apl_env("x", &mut env, &[1.0, 2.0, 99.0, 4.0, 5.0], "x modified");
+    assert_apl_env("x[1 5]←0", &mut env, &[0.0, 2.0, 99.0, 4.0, 0.0], "index assign multiple");
+}
