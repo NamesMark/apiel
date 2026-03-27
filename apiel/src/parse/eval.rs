@@ -1432,6 +1432,45 @@ pub fn eval(
             }
             Ok(Val::vector(groups))
         }
+        Expr::PartitionedEnclose { span, lhs, rhs } => {
+            debug!("Partitioned Enclose");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            if lhs_eval.data.len() != rhs_eval.data.len() {
+                return Err((span, "Partitioned enclose: left and right must be same length"));
+            }
+
+            let mut partitions: Vec<Vec<Scalar>> = Vec::new();
+            let mut current: Option<Vec<Scalar>> = None;
+
+            for (mask, elem) in lhs_eval.data.iter().zip(rhs_eval.data.iter()) {
+                let m: f64 = mask.clone().into();
+                if m >= 1.0 {
+                    // Start new partition (save current if exists)
+                    if let Some(part) = current.take() {
+                        partitions.push(part);
+                    }
+                    current = Some(vec![elem.clone()]);
+                } else if m == 0.0 && current.is_some() {
+                    // Continue current partition
+                    current.as_mut().unwrap().push(elem.clone());
+                }
+                // If m == 0 and no current partition, element is dropped
+            }
+
+            // Don't forget the last partition
+            if let Some(part) = current {
+                partitions.push(part);
+            }
+
+            let data: Vec<Scalar> = partitions
+                .into_iter()
+                .map(|p| Scalar::Nested(Box::new(Val::vector(p))))
+                .collect();
+
+            Ok(Val::vector(data))
+        }
         Expr::MonadicEach { span, func, arg } => {
             debug!("Monadic Each: {func}");
             let arg_eval = eval(lexer, *arg, env)?;
