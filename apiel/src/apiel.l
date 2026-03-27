@@ -50,6 +50,7 @@
 \⊆ "PARTITION"
 \¨ "EACH"
 \⍣ "POWOP"
+\⍤ "RANK"
 \⍨ "COMMUTE"
 \∪ "UNIQUE"
 \∩ "INTERSECT"

@@ -453,6 +453,9 @@ fn reference_tests() {
         ("(- ×) 3", &[-1.0], "atop: negate(signum(3))"),
         ("(- ×) ¯5", &[1.0], "atop: negate(signum(-5))"),
         ("(⌊ ÷) 7", &[0.0], "atop: floor(reciprocal(7))"),
+        // Rank operator ⍤
+        ("{+/⍵}⍤1 ⊢ 2 3 ⍴ ⍳ 6", &[6.0, 15.0], "rank 1: sum each row"),
+        ("{⌽⍵}⍤1 ⊢ 2 3 ⍴ ⍳ 6", &[3.0, 2.0, 1.0, 6.0, 5.0, 4.0], "rank 1: reverse each row"),
     ];
 
     let mut failures = Vec::new();
