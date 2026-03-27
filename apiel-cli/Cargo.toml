@@ -7,7 +7,7 @@ description = "Interactive REPL for apiel, a subset of the APL programming langu
 keywords = ["apl", "array", "repl", "interpreter"]
 categories = ["command-line-utilities", "mathematics"]
 homepage = "https://github.com/NamesMark/apiel"
-repository = "https://github.com/NamesMark/apiel/apiel-cli"
+repository = "https://github.com/NamesMark/apiel/tree/main/apiel-cli"
 license = "MIT"
 
 [[bin]]
