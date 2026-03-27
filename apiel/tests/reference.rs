@@ -431,6 +431,13 @@ fn reference_tests() {
         ("∨/ 0 0 0 0", &[0.0], "or-reduce all false"),
         ("≠/ 1 0 1 1", &[1.0], "neq-reduce (parity)"),
         ("1 2 3 ∘.≤ 1 2 3", &[1.0,1.0,1.0, 0.0,1.0,1.0, 0.0,0.0,1.0], "outer product leq"),
+        // Commute ⍨
+        ("+⍨ 3", &[6.0], "selfie: 3+3"),
+        ("+⍨ 1 2 3", &[2.0, 4.0, 6.0], "selfie vector: double"),
+        ("×⍨ 1 2 3", &[1.0, 4.0, 9.0], "selfie: square"),
+        ("2 -⍨ 5", &[3.0], "commute: 5-2"),
+        ("3 ÷⍨ 12", &[4.0], "commute: 12÷3"),
+        ("2 *⍨ 3", &[9.0], "commute: 3*2=9"),
     ];
 
     let mut failures = Vec::new();

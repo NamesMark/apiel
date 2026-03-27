@@ -176,6 +176,12 @@ Term -> Result<Expr, ()>:
             Err(_) => Err(())
         }
       }
+    | Factor Operator 'COMMUTE' Term {
+        match $2 {
+            Ok(op) => Ok(Expr::Commute{ span: $span, lhs: Box::new($1?), operator: op, rhs: Box::new($4?) }),
+            Err(_) => Err(())
+        }
+      }
     | MonadicFactor {
         Ok($1?)
       }
@@ -288,6 +294,12 @@ MonadicFactor -> Result<Expr, ()>:
       }
     | 'IOTA' 'EACH' Term {
         Ok(Expr::MonadicEach{ span: $span, func: "iota".to_string(), arg: Box::new($3?) })
+      }
+    | Operator 'COMMUTE' Term {
+        match $1 {
+            Ok(op) => Ok(Expr::Selfie{ span: $span, operator: op, arg: Box::new($3?) }),
+            Err(_) => Err(())
+        }
       }
     ;
 
@@ -679,6 +691,17 @@ pub enum Expr {
         lhs: Box<Expr>,
         operator: Operator,
         rhs: Box<Expr>,
+    },
+    Commute {
+        span: Span,
+        lhs: Box<Expr>,
+        operator: Operator,
+        rhs: Box<Expr>,
+    },
+    Selfie {
+        span: Span,
+        operator: Operator,
+        arg: Box<Expr>,
     },
     ReduceEach {
         span: Span,
