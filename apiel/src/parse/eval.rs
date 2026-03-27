@@ -1088,6 +1088,25 @@ pub fn eval(
             dfn_env.fns.insert("∇".to_string(), stored);
             eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
+        Expr::PowerOp { span, body, count, arg } => {
+            debug!("Power Operator (dfn)");
+            let count_val = eval(lexer, *count, env)?;
+            let n: usize = count_val.data[0].clone().try_into()
+                .map_err(|_| (span, "Power operator count must be a non-negative integer"))?;
+            let mut current = eval(lexer, *arg, env)?;
+            let body_rc = Rc::new(*body);
+            for _ in 0..n {
+                let stored = StoredDfn {
+                    body: Rc::clone(&body_rc),
+                    source: lexer.span_str(span).to_string(),
+                };
+                let mut dfn_env = env.clone();
+                dfn_env.vars.insert("⍵".to_string(), current);
+                dfn_env.fns.insert("∇".to_string(), stored);
+                current = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
+            }
+            Ok(current)
+        }
         Expr::DyadicDfn {
             span,
             lhs,

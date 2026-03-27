@@ -48,6 +48,7 @@
 \⊃ "FIRST"
 \⊆ "PARTITION"
 \¨ "EACH"
+\⍣ "POWOP"
 \⍨ "COMMUTE"
 \∪ "UNIQUE"
 \∩ "INTERSECT"
