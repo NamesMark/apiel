@@ -445,6 +445,14 @@ fn reference_tests() {
         // Compose ∘
         ("{⍵+1}∘{⍵×2} 3", &[7.0], "compose: (3×2)+1 = 7"),
         ("{⍵×⍵}∘{⍵+1} 4", &[25.0], "compose: (4+1)² = 25"),
+        // Function trains — fork (3-train)
+        ("(+/ ÷ ≢) 2 4 6 8 10", &[6.0], "fork: average"),
+        ("(⌈/ - ⌊/) 3 1 4 1 5 9", &[8.0], "fork: range = max-min"),
+        ("(+/ ÷ ≢) 10 20 30", &[20.0], "fork: average of 3"),
+        // Function trains — atop (2-train)
+        ("(- ×) 3", &[-1.0], "atop: negate(signum(3))"),
+        ("(- ×) ¯5", &[1.0], "atop: negate(signum(-5))"),
+        ("(⌊ ÷) 7", &[0.0], "atop: floor(reciprocal(7))"),
     ];
 
     let mut failures = Vec::new();
@@ -518,6 +526,20 @@ fn variables_and_assignment() {
         &mut env,
         &[5.0, 7.0, 9.0],
         "call named dyadic vector",
+    );
+
+    // Named functions in trains
+    assert_apl_env(
+        "(double + ×) 3",
+        &mut env,
+        &[7.0],
+        "train with named fn: (double 3)+(× 3) = 6+1 = 7",
+    );
+    assert_apl_env(
+        "(double - double) 5",
+        &mut env,
+        &[0.0],
+        "train with two named fns: (double 5)-(double 5) = 0",
     );
 }
 
