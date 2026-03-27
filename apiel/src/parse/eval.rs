@@ -99,10 +99,75 @@ fn get_operator_fn(op: Operator) -> fn(&Scalar, &Scalar) -> Option<Scalar> {
         Operator::Multiply => |a, b| a.checked_mul(b),
         Operator::Divide => |a, b| a.checked_div(b),
         Operator::Equal => |a, b| Some(Scalar::Integer(if a == b { 1 } else { 0 })),
+        Operator::NotEqual => |a, b| Some(Scalar::Integer(if a != b { 1 } else { 0 })),
         Operator::LessThan => |a, b| Some(Scalar::Integer(if a < b { 1 } else { 0 })),
         Operator::GreaterThan => |a, b| Some(Scalar::Integer(if a > b { 1 } else { 0 })),
+        Operator::LessEqual => |a, b| Some(Scalar::Integer(if a <= b { 1 } else { 0 })),
+        Operator::GreaterEqual => |a, b| Some(Scalar::Integer(if a >= b { 1 } else { 0 })),
         Operator::Max => |a, b| Some(if a >= b { a.clone() } else { b.clone() }),
         Operator::Min => |a, b| Some(if a <= b { a.clone() } else { b.clone() }),
+        Operator::And => |a, b| {
+            let af: f64 = a.clone().into();
+            let bf: f64 = b.clone().into();
+            Some(Scalar::Integer(if af != 0.0 && bf != 0.0 { 1 } else { 0 }))
+        },
+        Operator::Or => |a, b| {
+            let af: f64 = a.clone().into();
+            let bf: f64 = b.clone().into();
+            Some(Scalar::Integer(if af != 0.0 || bf != 0.0 { 1 } else { 0 }))
+        },
+        Operator::Nand => |a, b| {
+            let af: f64 = a.clone().into();
+            let bf: f64 = b.clone().into();
+            Some(Scalar::Integer(if af != 0.0 && bf != 0.0 { 0 } else { 1 }))
+        },
+        Operator::Nor => |a, b| {
+            let af: f64 = a.clone().into();
+            let bf: f64 = b.clone().into();
+            Some(Scalar::Integer(if af != 0.0 || bf != 0.0 { 0 } else { 1 }))
+        },
+        Operator::Power => |a, b| {
+            let af: f64 = a.clone().into();
+            let bf: f64 = b.clone().into();
+            let result = af.powf(bf);
+            if result.fract() == 0.0 && result.abs() < i64::MAX as f64 {
+                Some(Scalar::Integer(result as i64))
+            } else {
+                Some(Scalar::Float(result))
+            }
+        },
+        Operator::Log => |a, b| {
+            let af: f64 = a.clone().into();
+            let bf: f64 = b.clone().into();
+            Some(Scalar::Float(bf.ln() / af.ln()))
+        },
+        Operator::Residue => |a, b| {
+            let af: f64 = a.clone().into();
+            let bf: f64 = b.clone().into();
+            if af == 0.0 {
+                Some(Scalar::Float(bf))
+            } else {
+                let r = bf % af;
+                if r.fract() == 0.0 && r.abs() < i64::MAX as f64 {
+                    Some(Scalar::Integer(r as i64))
+                } else {
+                    Some(Scalar::Float(r))
+                }
+            }
+        },
+        Operator::Binomial => |a, b| {
+            let n: f64 = b.clone().into();
+            let k: f64 = a.clone().into();
+            let mut result = 1.0_f64;
+            for i in 0..k as u64 {
+                result *= (n - i as f64) / (i as f64 + 1.0);
+            }
+            if result.fract() == 0.0 && result.abs() < i64::MAX as f64 {
+                Some(Scalar::Integer(result as i64))
+            } else {
+                Some(Scalar::Float(result))
+            }
+        },
     }
 }
 

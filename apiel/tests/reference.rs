@@ -424,6 +424,13 @@ fn reference_tests() {
         ("5 ⍷ 1 2 3 4 5", &[0.0, 0.0, 0.0, 0.0, 1.0], "find single element"),
         ("3 4 5 ⍷ 1 2 3 4 5", &[0.0, 0.0, 1.0, 0.0, 0.0], "find at end"),
         ("9 ⍷ 1 2 3", &[0.0, 0.0, 0.0], "find missing element"),
+        // Extended operator reductions
+        ("∧/ 1 1 1 0", &[0.0], "and-reduce"),
+        ("∧/ 1 1 1 1", &[1.0], "and-reduce all true"),
+        ("∨/ 0 0 1 0", &[1.0], "or-reduce (any)"),
+        ("∨/ 0 0 0 0", &[0.0], "or-reduce all false"),
+        ("≠/ 1 0 1 1", &[1.0], "neq-reduce (parity)"),
+        ("1 2 3 ∘.≤ 1 2 3", &[1.0,1.0,1.0, 0.0,1.0,1.0, 0.0,0.0,1.0], "outer product leq"),
     ];
 
     let mut failures = Vec::new();
