@@ -980,6 +980,74 @@ pub fn eval(
                 _ => Err((Span::new(0, 0), "Transpose only supports rank 0, 1, or 2")),
             }
         }
+        Expr::DyadicTranspose { span, lhs, rhs } => {
+            debug!("Dyadic Transpose");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+
+            // Parse permutation vector (1-based to 0-based)
+            let perm: Vec<usize> = lhs_eval.data.iter()
+                .map(|s| {
+                    let v: usize = s.clone().try_into().map_err(|_| (span, "Transpose perm must be integers"))?;
+                    if v < 1 || v > rhs_eval.shape.len() {
+                        return Err((span, "Transpose permutation out of range"));
+                    }
+                    Ok(v - 1)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            if perm.len() != rhs_eval.shape.len() {
+                return Err((span, "Transpose permutation length must match array rank"));
+            }
+
+            let old_shape = &rhs_eval.shape;
+            let rank = old_shape.len();
+
+            // New shape: new_shape[perm[i]] = old_shape[i]
+            let mut new_shape = vec![0usize; rank];
+            for i in 0..rank {
+                new_shape[perm[i]] = old_shape[i];
+            }
+
+            let total: usize = new_shape.iter().product();
+            let mut new_data = vec![Scalar::Integer(0); total];
+
+            // Compute strides for old shape
+            let mut old_strides = vec![1usize; rank];
+            for i in (0..rank - 1).rev() {
+                old_strides[i] = old_strides[i + 1] * old_shape[i + 1];
+            }
+
+            // Compute strides for new shape
+            let mut new_strides = vec![1usize; rank];
+            for i in (0..rank - 1).rev() {
+                new_strides[i] = new_strides[i + 1] * new_shape[i + 1];
+            }
+
+            // For each element in old array, compute its new position
+            for old_flat in 0..total {
+                // Convert flat index to multi-dimensional old index
+                let mut old_idx = vec![0usize; rank];
+                let mut remaining = old_flat;
+                for i in 0..rank {
+                    old_idx[i] = remaining / old_strides[i];
+                    remaining %= old_strides[i];
+                }
+
+                // Apply permutation: new_idx[perm[i]] = old_idx[i]
+                let mut new_idx = vec![0usize; rank];
+                for i in 0..rank {
+                    new_idx[perm[i]] = old_idx[i];
+                }
+
+                // Convert new multi-dimensional index to flat
+                let new_flat: usize = new_idx.iter().zip(new_strides.iter()).map(|(&i, &s)| i * s).sum();
+
+                new_data[new_flat] = rhs_eval.data[old_flat].clone();
+            }
+
+            Ok(Val::new(new_shape, new_data))
+        }
         Expr::GradeUp { span, arg } => {
             debug!("Monadic Grade Up");
             let arg_eval = eval(lexer, *arg, env)?;
