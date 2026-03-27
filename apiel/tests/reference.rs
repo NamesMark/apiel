@@ -419,6 +419,11 @@ fn reference_tests() {
         // Tally ≢
         ("≢ 1 2 3 4 5", &[5.0], "tally of vector"),
         ("≢ 42", &[1.0], "tally of scalar"),
+        // Find ⍷
+        ("2 3 ⍷ 1 2 3 4 5", &[0.0, 1.0, 0.0, 0.0, 0.0], "find subsequence"),
+        ("5 ⍷ 1 2 3 4 5", &[0.0, 0.0, 0.0, 0.0, 1.0], "find single element"),
+        ("3 4 5 ⍷ 1 2 3 4 5", &[0.0, 0.0, 1.0, 0.0, 0.0], "find at end"),
+        ("9 ⍷ 1 2 3", &[0.0, 0.0, 0.0], "find missing element"),
     ];
 
     let mut failures = Vec::new();

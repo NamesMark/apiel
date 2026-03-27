@@ -1654,6 +1654,24 @@ pub fn eval(
             let rhs_eval = eval(lexer, *rhs, env)?;
             Ok(Val::scalar(Scalar::Integer(if lhs_eval.matches_val(&rhs_eval) { 0 } else { 1 })))
         }
+        Expr::Find { span: _, lhs, rhs } => {
+            debug!("Dyadic Find");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let pattern = &lhs_eval.data;
+            let data = &rhs_eval.data;
+            let plen = pattern.len();
+            let dlen = data.len();
+            let mut result = vec![Scalar::Integer(0); dlen];
+            if plen > 0 && plen <= dlen {
+                for i in 0..=(dlen - plen) {
+                    if data[i..i + plen].iter().zip(pattern.iter()).all(|(a, b)| a == b) {
+                        result[i] = Scalar::Integer(1);
+                    }
+                }
+            }
+            Ok(Val::new(rhs_eval.shape.clone(), result))
+        }
         Expr::StringLiteral { span } => {
             debug!("String Literal");
             let raw = lexer.span_str(span);

@@ -61,6 +61,7 @@
 \⊢ "RIGHT"
 \≡ "MATCH"
 \≢ "NOTMATCH"
+\⍷ "FIND"
 \⋄ "DIAMOND"
 : ":"
 \( "("
