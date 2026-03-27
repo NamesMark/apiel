@@ -1749,6 +1749,30 @@ pub fn eval(
                 Ok(Val::vector(data))
             }
         }
+        Expr::Commute {
+            span,
+            lhs,
+            operator,
+            rhs,
+        } => {
+            debug!("Dyadic Commute");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let op_fn = get_operator_fn(operator);
+            // Swap: apply as (rhs op lhs) instead of (lhs op rhs)
+            apply_dyadic_operation(span, &rhs_eval, &lhs_eval, |a, b| {
+                op_fn(a, b).ok_or_eyre("Commute operation failed")
+            })
+        }
+        Expr::Selfie { span, operator, arg } => {
+            debug!("Monadic Selfie");
+            let arg_eval = eval(lexer, *arg, env)?;
+            let op_fn = get_operator_fn(operator);
+            // Apply as (arg op arg)
+            apply_dyadic_operation(span, &arg_eval, &arg_eval, |a, b| {
+                op_fn(a, b).ok_or_eyre("Selfie operation failed")
+            })
+        }
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");
             lexer

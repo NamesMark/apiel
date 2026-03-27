@@ -48,6 +48,7 @@
 \⊃ "FIRST"
 \⊆ "PARTITION"
 \¨ "EACH"
+\⍨ "COMMUTE"
 \∪ "UNIQUE"
 \∩ "INTERSECT"
 \~ "TILDE"
