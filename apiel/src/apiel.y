@@ -137,6 +137,9 @@ Term -> Result<Expr, ()>:
     | '{' DfnBody '}' 'POWOP' Factor Term {
         Ok(Expr::PowerOp{ span: $span, body: Box::new($2?), count: Box::new($5?), arg: Box::new($6?) })
       }
+    | '{' DfnBody '}' 'KEY' Term {
+        Ok(Expr::KeyOp{ span: $span, body: Box::new($2?), arg: Box::new($5?) })
+      }
     | '{' DfnBody '}' 'RANK' Factor Term {
         Ok(Expr::RankOp{ span: $span, body: Box::new($2?), rank: Box::new($5?), arg: Box::new($6?) })
       }
@@ -626,6 +629,11 @@ pub enum Expr {
         span: Span,
         body: Box<Expr>,
         rank: Box<Expr>,
+        arg: Box<Expr>,
+    },
+    KeyOp {
+        span: Span,
+        body: Box<Expr>,
         arg: Box<Expr>,
     },
     DyadicDfn {

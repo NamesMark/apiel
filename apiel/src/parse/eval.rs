@@ -1168,6 +1168,41 @@ pub fn eval(
 
             Ok(arg_val)
         }
+        Expr::KeyOp { span, body, arg } => {
+            debug!("Key Operator");
+            let arg_val = eval(lexer, *arg, env)?;
+            let body_rc = Rc::new(*body);
+
+            // Find unique keys and their indices (1-based)
+            let mut keys: Vec<Scalar> = Vec::new();
+            let mut groups: Vec<Vec<Scalar>> = Vec::new();
+
+            for (i, s) in arg_val.data.iter().enumerate() {
+                if let Some(pos) = keys.iter().position(|k| k == s) {
+                    groups[pos].push(Scalar::Integer((i + 1) as i64));
+                } else {
+                    keys.push(s.clone());
+                    groups.push(vec![Scalar::Integer((i + 1) as i64)]);
+                }
+            }
+
+            // Apply f to each group
+            let mut results = Vec::new();
+            for (key, indices) in keys.iter().zip(groups.iter()) {
+                let stored = StoredDfn {
+                    body: Rc::clone(&body_rc),
+                    source: lexer.span_str(span).to_string(),
+                };
+                let mut dfn_env = env.clone();
+                dfn_env.vars.insert("⍺".to_string(), Val::scalar(key.clone()));
+                dfn_env.vars.insert("⍵".to_string(), Val::vector(indices.clone()));
+                dfn_env.fns.insert("∇".to_string(), stored);
+                let result = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
+                results.extend(result.data);
+            }
+
+            Ok(Val::vector(results))
+        }
         Expr::PowerOp { span, body, count, arg } => {
             debug!("Power Operator (dfn)");
             let count_val = eval(lexer, *count, env)?;

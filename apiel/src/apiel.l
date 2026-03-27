@@ -50,6 +50,7 @@
 \⊃ "FIRST"
 \⊆ "PARTITION"
 \¨ "EACH"
+\⌸ "KEY"
 \⍣ "POWOP"
 \⍤ "RANK"
 \⍨ "COMMUTE"
