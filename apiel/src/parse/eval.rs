@@ -1611,6 +1611,26 @@ pub fn eval(
                 Ok(Val::new(vec![n, b_cols], data))
             }
         }
+        Expr::Left { span: _, lhs, rhs } => {
+            debug!("Dyadic Left");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let _rhs_eval = eval(lexer, *rhs, env)?;
+            Ok(lhs_eval)
+        }
+        Expr::Right { span: _, lhs, rhs } => {
+            debug!("Dyadic Right");
+            let _lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            Ok(rhs_eval)
+        }
+        Expr::LeftIdentity { span: _, arg } => {
+            debug!("Monadic Left (identity)");
+            eval(lexer, *arg, env)
+        }
+        Expr::RightIdentity { span: _, arg } => {
+            debug!("Monadic Right (identity)");
+            eval(lexer, *arg, env)
+        }
         Expr::StringLiteral { span } => {
             debug!("String Literal");
             let raw = lexer.span_str(span);
