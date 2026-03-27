@@ -29,13 +29,14 @@ apl!("double←{⍵×2}", &mut env).unwrap();
 apl!("double 1 2 3", &mut env).unwrap();  // [2.0, 4.0, 6.0]
 ```
 
-## What's supported
+## What's Supported
 
 - **Arithmetic**: `+` `-` `×` `÷` `*` `⍟` `○` `!` `?` `|` `⌈` `⌊` `⌹`
-- **Arrays**: `⍴` `,` `⌽` `⍉` `↑` `↓` `⍋` `⍒` `⊂` `⊃` `⊆` `⌷` `∪` `∩` `~`
+- **Arrays**: `⍴` `,` `⌽` `⍉` `↑` `↓` `⍋` `⍒` `⊂` `⊃` `⊆` `⌷` `∪` `∩` `~` `⊣` `⊢` `≡` `≢` `⍷`
 - **Comparison**: `=` `≠` `<` `>` `≤` `≥` `∧` `∨` `⍲` `⍱`
-- **Operators**: `/` (reduce) `\` (scan) `∘.` (outer product) `f.g` (inner product) `¨` (each)
-- **Language**: `←` assignment, `{⍵}` dfns, `∇` recursion, `⋄` `:` guards, `¯` high minus, `'...'` strings, `⊥` `⊤` encode/decode
+- **Operators**: `f/` reduce, `f\` scan, `∘.f` outer product, `f.g` inner product, `f¨` each, `f⍨` commute, `f⍣n` power, `{f}∘{g}` compose, `{f}⍥{g}` over, `{f}⍤k` rank, `{f}@i` at, `{f}⌸` key
+- **Trains**: `(f g h)` fork, `(f g)` atop -- supports primitives, reductions, and named functions
+- **Language**: `←` assignment, `x+←1` modified assignment, `x[i]←v` indexed assignment, `{⍵}` dfns, `∇` recursion, `⋄` `:` guards, `¯` high minus, `'...'` strings, `⊥` `⊤` encode/decode, nested arrays
 
 ## Affiliation
 
