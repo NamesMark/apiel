@@ -188,6 +188,9 @@ Term -> Result<Expr, ()>:
     | Factor 'FIND' Term {
         Ok(Expr::Find{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'ENCLOSE' Term {
+        Ok(Expr::PartitionedEnclose{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor Operator 'DOT' Operator Term {
         match ($2, $4) {
             (Ok(f), Ok(g)) => Ok(Expr::InnerProduct{ span: $span, lhs: Box::new($1?), f, g, rhs: Box::new($5?) }),
@@ -730,6 +733,11 @@ pub enum Expr {
         arg: Box<Expr>,
     },
     Partition {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    PartitionedEnclose {
         span: Span,
         lhs: Box<Expr>,
         rhs: Box<Expr>,

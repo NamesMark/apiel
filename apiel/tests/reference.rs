@@ -716,3 +716,17 @@ fn mix_and_split() {
     let val = eval_to_val("↑ ↓ 2 3 ⍴ ⍳ 6", &mut env).unwrap();
     assert_eq!(val.shape, vec![2, 3], "split then mix roundtrip");
 }
+
+#[test]
+fn partitioned_enclose() {
+    let mut env = Env::new();
+
+    let val = eval_to_val("1 0 1 0 0 ⊂ 1 2 3 4 5", &mut env).unwrap();
+    assert_eq!(format_val(&val), "(1 2) (3 4 5)", "partition: two groups");
+
+    let val = eval_to_val("1 1 1 ⊂ 10 20 30", &mut env).unwrap();
+    assert_eq!(format_val(&val), "(10) (20) (30)", "partition: each element");
+
+    let val = eval_to_val("1 0 0 0 0 ⊂ 1 2 3 4 5", &mut env).unwrap();
+    assert_eq!(format_val(&val), "(1 2 3 4 5)", "partition: single group");
+}
