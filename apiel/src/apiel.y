@@ -149,6 +149,12 @@ Term -> Result<Expr, ()>:
     | Factor 'ENCODE' Term {
         Ok(Expr::Encode{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'LEFT' Term {
+        Ok(Expr::Left{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
+    | Factor 'RIGHT' Term {
+        Ok(Expr::Right{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor Operator 'DOT' Operator Term {
         match ($2, $4) {
             (Ok(f), Ok(g)) => Ok(Expr::InnerProduct{ span: $span, lhs: Box::new($1?), f, g, rhs: Box::new($5?) }),
@@ -252,6 +258,12 @@ MonadicFactor -> Result<Expr, ()>:
       }
     | 'MATINV' Term {
         Ok(Expr::MatrixInverse{ span: $span, arg: Box::new($2?) })
+      }
+    | 'LEFT' Term {
+        Ok(Expr::LeftIdentity{ span: $span, arg: Box::new($2?) })
+      }
+    | 'RIGHT' Term {
+        Ok(Expr::RightIdentity{ span: $span, arg: Box::new($2?) })
       }
     | 'RHO' 'EACH' Term {
         Ok(Expr::MonadicEach{ span: $span, func: "shape".to_string(), arg: Box::new($3?) })
@@ -669,6 +681,16 @@ pub enum Expr {
         lhs: Box<Expr>,
         rhs: Box<Expr>,
     },
+    Left {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    Right {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
     StringLiteral {
         span: Span,
     },
@@ -771,6 +793,14 @@ pub enum Expr {
         arg: Box<Expr>,
     },
     Where {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    LeftIdentity {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    RightIdentity {
         span: Span,
         arg: Box<Expr>,
     },

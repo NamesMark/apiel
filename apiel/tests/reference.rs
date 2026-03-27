@@ -407,6 +407,15 @@ fn reference_tests() {
             &[10.0, 30.0, 50.0],
             "index vector",
         ),
+        // Identity functions ⊣ ⊢
+        ("⊢ 42", &[42.0], "monadic right tack (identity)"),
+        ("⊢ 1 2 3", &[1.0, 2.0, 3.0], "monadic right tack vector"),
+        ("⊣ 42", &[42.0], "monadic left tack (identity)"),
+        ("⊣ 1 2 3", &[1.0, 2.0, 3.0], "monadic left tack vector"),
+        ("5 ⊢ 42", &[42.0], "dyadic right tack returns right"),
+        ("5 ⊣ 42", &[5.0], "dyadic left tack returns left"),
+        ("1 2 3 ⊢ 4 5 6", &[4.0, 5.0, 6.0], "dyadic right tack vectors"),
+        ("1 2 3 ⊣ 4 5 6", &[1.0, 2.0, 3.0], "dyadic left tack vectors"),
     ];
 
     let mut failures = Vec::new();

@@ -57,6 +57,8 @@
 \⌷ "INDEX"
 \⌹ "MATINV"
 '[^']*' "STRING"
+\⊣ "LEFT"
+\⊢ "RIGHT"
 \⋄ "DIAMOND"
 : ":"
 \( "("
