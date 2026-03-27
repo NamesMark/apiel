@@ -1963,6 +1963,55 @@ pub fn eval(
                 op_fn(a, b).ok_or_eyre("Selfie operation failed")
             })
         }
+        Expr::Split { span: _, arg } => {
+            debug!("Monadic Split");
+            let arg_eval = eval(lexer, *arg, env)?;
+            if arg_eval.shape.len() <= 1 {
+                // Vector or scalar: each element becomes a nested scalar
+                let data = arg_eval
+                    .data
+                    .into_iter()
+                    .map(|s| Scalar::Nested(Box::new(Val::scalar(s))))
+                    .collect::<Vec<_>>();
+                Ok(Val::vector(data))
+            } else {
+                let rows = arg_eval.shape[0];
+                let cell_shape = arg_eval.shape[1..].to_vec();
+                let cell_size: usize = cell_shape.iter().product();
+                let data = (0..rows)
+                    .map(|i| {
+                        let start = i * cell_size;
+                        let cell = Val::new(
+                            cell_shape.clone(),
+                            arg_eval.data[start..start + cell_size].to_vec(),
+                        );
+                        Scalar::Nested(Box::new(cell))
+                    })
+                    .collect();
+                Ok(Val::vector(data))
+            }
+        }
+        Expr::Mix { span, arg } => {
+            debug!("Monadic Mix");
+            let arg_eval = eval(lexer, *arg, env)?;
+            let cells: Vec<Val> = arg_eval
+                .data
+                .iter()
+                .filter_map(|s| match s {
+                    Scalar::Nested(v) => Some((**v).clone()),
+                    _ => None,
+                })
+                .collect();
+            if cells.is_empty() {
+                return Ok(arg_eval);
+            }
+            let cell_shape = cells[0].shape.clone();
+            let mut shape = vec![cells.len()];
+            shape.extend_from_slice(&cell_shape);
+            let data = cells.into_iter().flat_map(|v| v.data).collect();
+            let _ = span;
+            Ok(Val::new(shape, data))
+        }
         Expr::ScalarFloat { span, .. } => {
             debug!("Scalar Float");
             lexer

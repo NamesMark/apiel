@@ -310,6 +310,12 @@ MonadicFactor -> Result<Expr, ()>:
     | 'NOTMATCH' Term {
         Ok(Expr::Tally{ span: $span, arg: Box::new($2?) })
       }
+    | 'TAKE' Term {
+        Ok(Expr::Mix{ span: $span, arg: Box::new($2?) })
+      }
+    | 'DROP' Term {
+        Ok(Expr::Split{ span: $span, arg: Box::new($2?) })
+      }
     | 'RHO' 'EACH' Term {
         Ok(Expr::MonadicEach{ span: $span, func: "shape".to_string(), arg: Box::new($3?) })
       }
@@ -946,6 +952,14 @@ pub enum Expr {
         arg: Box<Expr>,
     },
     Tally {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Mix {
+        span: Span,
+        arg: Box<Expr>,
+    },
+    Split {
         span: Span,
         arg: Box<Expr>,
     },

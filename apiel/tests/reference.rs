@@ -697,3 +697,22 @@ fn depth_and_match() {
     let val = eval_to_val("(2 3 ⍴ ⍳ 6) ≡ 1 2 3 4 5 6", &mut env).unwrap();
     assert_eq!(format_val(&val), "0", "match: different shapes");
 }
+
+#[test]
+fn mix_and_split() {
+    let mut env = Env::new();
+
+    // Split: matrix -> nested vector of rows
+    let val = eval_to_val("↓ 2 3 ⍴ ⍳ 6", &mut env).unwrap();
+    assert_eq!(val.data.len(), 2, "split 2x3 gives 2 elements");
+    assert_eq!(format_val(&val), "(1 2 3) (4 5 6)");
+
+    // Mix: nested vector -> matrix
+    let val = eval_to_val("↑ (⊂ 1 2 3),(⊂ 4 5 6)", &mut env).unwrap();
+    assert_eq!(val.shape, vec![2, 3], "mix produces 2x3 matrix");
+    assert_eq!(format_val(&val), "1 2 3 4 5 6");
+
+    // Split then mix is identity (for regular matrix)
+    let val = eval_to_val("↑ ↓ 2 3 ⍴ ⍳ 6", &mut env).unwrap();
+    assert_eq!(val.shape, vec![2, 3], "split then mix roundtrip");
+}
