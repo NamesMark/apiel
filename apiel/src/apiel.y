@@ -128,6 +128,9 @@ Term -> Result<Expr, ()>:
     | '{' DfnBody '}' 'POWOP' Factor Term {
         Ok(Expr::PowerOp{ span: $span, body: Box::new($2?), count: Box::new($5?), arg: Box::new($6?) })
       }
+    | '{' DfnBody '}' 'RANK' Factor Term {
+        Ok(Expr::RankOp{ span: $span, body: Box::new($2?), rank: Box::new($5?), arg: Box::new($6?) })
+      }
     | 'NAME' Factor {
         Ok(Expr::NamedMonadic{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($2?) })
       }
@@ -602,6 +605,12 @@ pub enum Expr {
         span: Span,
         body: Box<Expr>,
         count: Box<Expr>,
+        arg: Box<Expr>,
+    },
+    RankOp {
+        span: Span,
+        body: Box<Expr>,
+        rank: Box<Expr>,
         arg: Box<Expr>,
     },
     DyadicDfn {

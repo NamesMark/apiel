@@ -1088,6 +1088,53 @@ pub fn eval(
             dfn_env.fns.insert("∇".to_string(), stored);
             eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
+        Expr::RankOp { span, body, rank, arg } => {
+            debug!("Rank Operator");
+            let rank_val = eval(lexer, *rank, env)?;
+            let k: usize = rank_val.data[0].clone().try_into()
+                .map_err(|_| (span, "Rank must be a non-negative integer"))?;
+            let arg_val = eval(lexer, *arg, env)?;
+            let n = arg_val.shape.len();
+            let body_rc = Rc::new(*body);
+            if k >= n {
+                // Apply to entire array
+                let stored = StoredDfn {
+                    body: Rc::clone(&body_rc),
+                    source: lexer.span_str(span).to_string(),
+                };
+                let mut dfn_env = env.clone();
+                dfn_env.vars.insert("⍵".to_string(), arg_val);
+                dfn_env.fns.insert("∇".to_string(), stored);
+                return eval(lexer, (*body_rc).clone(), &mut dfn_env);
+            }
+            let frame_shape = arg_val.shape[..n - k].to_vec();
+            let cell_shape = arg_val.shape[n - k..].to_vec();
+            let cell_size: usize = cell_shape.iter().product();
+            let num_cells: usize = frame_shape.iter().product();
+            let mut results = Vec::new();
+            let mut result_cell_shape: Option<Vec<usize>> = None;
+            for i in 0..num_cells {
+                let start = i * cell_size;
+                let cell_data = arg_val.data[start..start + cell_size].to_vec();
+                let cell = Val::new(cell_shape.clone(), cell_data);
+                let stored = StoredDfn {
+                    body: Rc::clone(&body_rc),
+                    source: lexer.span_str(span).to_string(),
+                };
+                let mut dfn_env = env.clone();
+                dfn_env.vars.insert("⍵".to_string(), cell);
+                dfn_env.fns.insert("∇".to_string(), stored);
+                let result = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
+                if result_cell_shape.is_none() {
+                    result_cell_shape = Some(result.shape.clone());
+                }
+                results.extend(result.data);
+            }
+            let rcs = result_cell_shape.unwrap_or_default();
+            let mut final_shape = frame_shape;
+            final_shape.extend_from_slice(&rcs);
+            Ok(Val::new(final_shape, results))
+        }
         Expr::PowerOp { span, body, count, arg } => {
             debug!("Power Operator (dfn)");
             let count_val = eval(lexer, *count, env)?;
