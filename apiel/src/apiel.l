@@ -41,6 +41,7 @@
 \⍒ "GRADEDN"
 ∘\. "OUTERPRODUCT"
 \∘ "COMPOSE"
+\⍥ "OVER"
 \← "ASSIGN"
 \⍵ "OMEGA"
 \⍺ "ALPHA"

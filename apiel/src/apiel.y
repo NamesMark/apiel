@@ -125,6 +125,12 @@ Term -> Result<Expr, ()>:
     | Factor '{' DfnBody '}' 'COMPOSE' '{' DfnBody '}' Term {
         Ok(Expr::ComposeDyadicDfn{ span: $span, lhs: Box::new($1?), f: Box::new($3?), g: Box::new($7?), arg: Box::new($9?) })
       }
+    | '{' DfnBody '}' 'OVER' '{' DfnBody '}' Term {
+        Ok(Expr::OverDfn{ span: $span, f: Box::new($2?), g: Box::new($6?), arg: Box::new($8?) })
+      }
+    | Factor '{' DfnBody '}' 'OVER' '{' DfnBody '}' Term {
+        Ok(Expr::OverDyadicDfn{ span: $span, lhs: Box::new($1?), f: Box::new($3?), g: Box::new($7?), arg: Box::new($9?) })
+      }
     | '{' DfnBody '}' 'POWOP' Factor Term {
         Ok(Expr::PowerOp{ span: $span, body: Box::new($2?), count: Box::new($5?), arg: Box::new($6?) })
       }
@@ -800,6 +806,19 @@ pub enum Expr {
         arg: Box<Expr>,
     },
     ComposeDyadicDfn {
+        span: Span,
+        lhs: Box<Expr>,
+        f: Box<Expr>,
+        g: Box<Expr>,
+        arg: Box<Expr>,
+    },
+    OverDfn {
+        span: Span,
+        f: Box<Expr>,
+        g: Box<Expr>,
+        arg: Box<Expr>,
+    },
+    OverDyadicDfn {
         span: Span,
         lhs: Box<Expr>,
         f: Box<Expr>,

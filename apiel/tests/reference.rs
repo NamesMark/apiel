@@ -456,6 +456,9 @@ fn reference_tests() {
         // Rank operator ⍤
         ("{+/⍵}⍤1 ⊢ 2 3 ⍴ ⍳ 6", &[6.0, 15.0], "rank 1: sum each row"),
         ("{⌽⍵}⍤1 ⊢ 2 3 ⍴ ⍳ 6", &[3.0, 2.0, 1.0, 6.0, 5.0, 4.0], "rank 1: reverse each row"),
+        // Over ⍥
+        ("{⍵×2}⍥{⍵+1} 5", &[12.0], "over monadic: (5+1)×2 = 12"),
+        ("3 {⍺+⍵}⍥{⍵×⍵} 4", &[25.0], "over dyadic: 3²+4² = 25"),
     ];
 
     let mut failures = Vec::new();

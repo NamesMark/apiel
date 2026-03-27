@@ -1200,6 +1200,36 @@ pub fn eval(
             f_env.vars.insert("⍵".to_string(), g_result);
             eval(lexer, *f, &mut f_env)
         }
+        Expr::OverDfn { span: _, f, g, arg } => {
+            debug!("Over (monadic)");
+            let arg_val = eval(lexer, *arg, env)?;
+            // Apply g monadically to arg
+            let mut g_env = env.clone();
+            g_env.vars.insert("⍵".to_string(), arg_val);
+            let g_result = eval(lexer, *g, &mut g_env)?;
+            // Apply f monadically to g's result
+            let mut f_env = env.clone();
+            f_env.vars.insert("⍵".to_string(), g_result);
+            eval(lexer, *f, &mut f_env)
+        }
+        Expr::OverDyadicDfn { span: _, lhs, f, g, arg } => {
+            debug!("Over (dyadic)");
+            let lhs_val = eval(lexer, *lhs, env)?;
+            let arg_val = eval(lexer, *arg, env)?;
+            // Apply g to BOTH arguments
+            let g_clone = (*g).clone();
+            let mut g_env_l = env.clone();
+            g_env_l.vars.insert("⍵".to_string(), lhs_val);
+            let g_lhs = eval(lexer, *g, &mut g_env_l)?;
+            let mut g_env_r = env.clone();
+            g_env_r.vars.insert("⍵".to_string(), arg_val);
+            let g_rhs = eval(lexer, g_clone, &mut g_env_r)?;
+            // Apply f dyadically to the two results
+            let mut f_env = env.clone();
+            f_env.vars.insert("⍺".to_string(), g_lhs);
+            f_env.vars.insert("⍵".to_string(), g_rhs);
+            eval(lexer, *f, &mut f_env)
+        }
         Expr::SelfCall { span, arg } => {
             debug!("Self-reference ∇");
             let arg_val = eval(lexer, *arg, env)?;
