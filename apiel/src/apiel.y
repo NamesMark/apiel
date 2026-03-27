@@ -383,10 +383,21 @@ Factor -> Result<Expr, ()>:
     | '×' { Ok(Operator::Multiply) }
     | '÷' { Ok(Operator::Divide) }
     | 'EQ' { Ok(Operator::Equal) }
+    | 'NEQ' { Ok(Operator::NotEqual) }
     | 'LT' { Ok(Operator::LessThan) }
     | 'GT' { Ok(Operator::GreaterThan) }
+    | 'LTE' { Ok(Operator::LessEqual) }
+    | 'GTE' { Ok(Operator::GreaterEqual) }
     | '⌈' { Ok(Operator::Max) }
     | '⌊' { Ok(Operator::Min) }
+    | 'AND' { Ok(Operator::And) }
+    | 'OR' { Ok(Operator::Or) }
+    | 'NAND' { Ok(Operator::Nand) }
+    | 'NOR' { Ok(Operator::Nor) }
+    | 'EXP' { Ok(Operator::Power) }
+    | 'LOG' { Ok(Operator::Log) }
+    | '|' { Ok(Operator::Residue) }
+    | '!' { Ok(Operator::Binomial) }
     ;
 
 
@@ -870,8 +881,19 @@ pub enum Operator {
     Multiply,
     Divide,
     Equal,
+    NotEqual,
     LessThan,
     GreaterThan,
+    LessEqual,
+    GreaterEqual,
     Max,
     Min,
+    And,
+    Or,
+    Nand,
+    Nor,
+    Power,
+    Log,
+    Residue,
+    Binomial,
 }
