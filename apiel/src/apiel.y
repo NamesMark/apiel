@@ -119,6 +119,12 @@ Term -> Result<Expr, ()>:
     | '{' DfnBody '}' Term {
         Ok(Expr::MonadicDfn{ span: $span, body: Box::new($2?), rhs: Box::new($4?) })
       }
+    | '{' DfnBody '}' 'COMPOSE' '{' DfnBody '}' Term {
+        Ok(Expr::ComposeDfn{ span: $span, f: Box::new($2?), g: Box::new($6?), arg: Box::new($8?) })
+      }
+    | Factor '{' DfnBody '}' 'COMPOSE' '{' DfnBody '}' Term {
+        Ok(Expr::ComposeDyadicDfn{ span: $span, lhs: Box::new($1?), f: Box::new($3?), g: Box::new($7?), arg: Box::new($9?) })
+      }
     | '{' DfnBody '}' 'POWOP' Factor Term {
         Ok(Expr::PowerOp{ span: $span, body: Box::new($2?), count: Box::new($5?), arg: Box::new($6?) })
       }
@@ -777,6 +783,19 @@ pub enum Expr {
         span: Span,
         operator: Operator,
         term: Box<Expr>,
+    },
+    ComposeDfn {
+        span: Span,
+        f: Box<Expr>,
+        g: Box<Expr>,
+        arg: Box<Expr>,
+    },
+    ComposeDyadicDfn {
+        span: Span,
+        lhs: Box<Expr>,
+        f: Box<Expr>,
+        g: Box<Expr>,
+        arg: Box<Expr>,
     },
 
     // Monadic

@@ -40,6 +40,7 @@
 \⍋ "GRADEUP"
 \⍒ "GRADEDN"
 ∘\. "OUTERPRODUCT"
+\∘ "COMPOSE"
 \← "ASSIGN"
 \⍵ "OMEGA"
 \⍺ "ALPHA"

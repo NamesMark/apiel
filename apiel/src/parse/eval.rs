@@ -1127,6 +1127,32 @@ pub fn eval(
             dfn_env.fns.insert("∇".to_string(), stored);
             eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
+        Expr::ComposeDfn { span: _, f, g, arg } => {
+            debug!("Compose (monadic)");
+            let arg_val = eval(lexer, *arg, env)?;
+            // First apply g monadically
+            let mut g_env = env.clone();
+            g_env.vars.insert("⍵".to_string(), arg_val);
+            let g_result = eval(lexer, *g, &mut g_env)?;
+            // Then apply f monadically
+            let mut f_env = env.clone();
+            f_env.vars.insert("⍵".to_string(), g_result);
+            eval(lexer, *f, &mut f_env)
+        }
+        Expr::ComposeDyadicDfn { span: _, lhs, f, g, arg } => {
+            debug!("Compose (dyadic)");
+            let lhs_val = eval(lexer, *lhs, env)?;
+            let arg_val = eval(lexer, *arg, env)?;
+            // Apply g monadically to right arg
+            let mut g_env = env.clone();
+            g_env.vars.insert("⍵".to_string(), arg_val);
+            let g_result = eval(lexer, *g, &mut g_env)?;
+            // Apply f dyadically with left and g's result
+            let mut f_env = env.clone();
+            f_env.vars.insert("⍺".to_string(), lhs_val);
+            f_env.vars.insert("⍵".to_string(), g_result);
+            eval(lexer, *f, &mut f_env)
+        }
         Expr::SelfCall { span, arg } => {
             debug!("Self-reference ∇");
             let arg_val = eval(lexer, *arg, env)?;

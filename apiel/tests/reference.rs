@@ -442,6 +442,9 @@ fn reference_tests() {
         ("{⍵+1}⍣3 ⍳ 5", &[4.0, 5.0, 6.0, 7.0, 8.0], "power: increment 3 times"),
         ("{⍵×2}⍣4 (1)", &[16.0], "power: double 4 times"),
         ("{⍵+1}⍣0 (5)", &[5.0], "power 0 is identity"),
+        // Compose ∘
+        ("{⍵+1}∘{⍵×2} 3", &[7.0], "compose: (3×2)+1 = 7"),
+        ("{⍵×⍵}∘{⍵+1} 4", &[25.0], "compose: (4+1)² = 25"),
     ];
 
     let mut failures = Vec::new();
