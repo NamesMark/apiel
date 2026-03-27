@@ -12,7 +12,7 @@ doc = false
 name = "apiel-cli"
 
 [dependencies]
-apiel = { path = "../apiel" }
+apiel = { version = "0.2.0", path = "../apiel" }
 tracing-subscriber.workspace = true
 
 [dev-dependencies]
