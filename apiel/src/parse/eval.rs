@@ -42,7 +42,10 @@ fn apply_dyadic_operation<F>(
 where
     F: Fn(&Scalar, &Scalar) -> Result<Scalar>,
 {
-    if lhs.is_scalar() {
+    // Treat 1-element arrays as scalars for broadcasting (standard APL behavior)
+    let lhs_scalar = lhs.data.len() == 1;
+    let rhs_scalar = rhs.data.len() == 1;
+    if lhs_scalar && !rhs_scalar {
         let data = rhs
             .data
             .iter()
@@ -50,7 +53,7 @@ where
             .collect::<Result<Vec<Scalar>, _>>()
             .map_err(|_| (span, "Operation failed"))?;
         Ok(Val::new(rhs.shape.clone(), data))
-    } else if rhs.is_scalar() {
+    } else if rhs_scalar && !lhs_scalar {
         let data = lhs
             .data
             .iter()
@@ -58,7 +61,7 @@ where
             .collect::<Result<Vec<Scalar>, _>>()
             .map_err(|_| (span, "Operation failed"))?;
         Ok(Val::new(lhs.shape.clone(), data))
-    } else if lhs.shape == rhs.shape {
+    } else if lhs.shape == rhs.shape || (lhs_scalar && rhs_scalar) {
         let data = lhs
             .data
             .iter()
@@ -1127,23 +1130,52 @@ pub fn eval(
             debug!("Reduce");
             let term_eval = eval(lexer, *term, env)?;
 
-            // APL reduce is a right-fold: f/ a b c d = a f (b f (c f d))
+            // APL reduce is a right-fold along the last axis:
+            // f/ a b c d = a f (b f (c f d))
             let op_fn = get_operator_fn(operator);
 
-            let result = term_eval
-                .data
-                .iter()
-                .rev()
-                .cloned()
-                .try_fold(None, |acc, n| match acc {
-                    None => Some(Some(n)),
-                    Some(right) => op_fn(&n, &right).map(Some),
-                })
-                .flatten();
-
-            result
-                .map(Val::scalar)
-                .ok_or((span, "Arithmetic error or invalid operation in Reduce"))
+            if term_eval.shape.len() <= 1 {
+                // Vector or scalar: reduce all elements
+                let result = term_eval
+                    .data
+                    .iter()
+                    .rev()
+                    .cloned()
+                    .try_fold(None, |acc, n| match acc {
+                        None => Some(Some(n)),
+                        Some(right) => op_fn(&n, &right).map(Some),
+                    })
+                    .flatten();
+                result
+                    .map(Val::scalar)
+                    .ok_or((span, "Arithmetic error or invalid operation in Reduce"))
+            } else {
+                // Higher-rank: reduce along last axis
+                let last_dim = *term_eval.shape.last().unwrap();
+                let row_count: usize = term_eval.data.len() / last_dim;
+                let mut results = Vec::with_capacity(row_count);
+                for i in 0..row_count {
+                    let start = i * last_dim;
+                    let row = &term_eval.data[start..start + last_dim];
+                    let result = row
+                        .iter()
+                        .rev()
+                        .cloned()
+                        .try_fold(None::<Scalar>, |acc, n| match acc {
+                            None => Some(Some(n)),
+                            Some(right) => op_fn(&n, &right).map(Some),
+                        })
+                        .flatten()
+                        .ok_or((span, "Arithmetic error in Reduce"))?;
+                    results.push(result);
+                }
+                let new_shape = term_eval.shape[..term_eval.shape.len() - 1].to_vec();
+                if new_shape.is_empty() {
+                    Ok(Val::scalar(results.into_iter().next().unwrap()))
+                } else {
+                    Ok(Val::new(new_shape, results))
+                }
+            }
         }
         Expr::Scan {
             span,

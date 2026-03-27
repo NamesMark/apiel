@@ -493,6 +493,183 @@ fn reference_tests() {
     }
 }
 
+/// All examples from https://aplwiki.com/wiki/Simple_examples
+/// Unsupported examples are commented out with the reason.
+#[test]
+fn aplwiki_simple_examples() {
+    let mut env = Env::new();
+
+    // --- Averaging ---
+
+    // Ex 1: Average function definition (just a dfn, no invocation — no output to test)
+    // {(+⌿⍵)÷≢⍵}
+
+    // Ex 2: +⌿ 1 2 3 4 5 6 → 21
+    // ⌿ (reduce first) not implemented; adapted to / (equivalent for vectors)
+    assert_apl("+/ 1 2 3 4 5 6", &[21.0], "wiki ex2: sum reduce");
+
+    // Ex 3: 1+2+3+4+5+6 → 21
+    assert_apl("1+2+3+4+5+6", &[21.0], "wiki ex3: chained addition");
+
+    // Ex 4: {⍺,', ',⍵}⌿ — partial application, no output
+    // Requires ⌿ and string array literals — skipped
+
+    // Ex 5: {⍺,', ',⍵}⌿'cow' 'sheep' 'cat' 'dog'
+    // Requires ⌿ and array-of-strings syntax — skipped
+
+    // Ex 6: {(+⌿⍵)÷≢⍵} 3 4.5 7 21 → 8.875
+    // Adapted: ⌿→/, mixed int/float vector not supported so using all ints
+    assert_apl(
+        "{(+/⍵)÷≢⍵} 2 4 6 8 10",
+        &[6.0],
+        "wiki ex6: average via dfn",
+    );
+
+    // Ex 7: (+⌿÷≢) 3 4.5 7 21 → 8.875
+    // Adapted: ⌿→/, all ints
+    assert_apl("(+/ ÷ ≢) 2 4 6 8 10", &[6.0], "wiki ex7: average via fork");
+
+    // Ex 8: Same as 7, just showing spacing: (+⌿ ÷ ≢) 3 4.5 7 21
+    // Already covered by ex7
+
+    // Ex 9: (+⌿ 3 4.5 7 21) ÷ (≢ 3 4.5 7 21) → 8.875
+    // Adapted: ⌿→/, all ints
+    assert_apl(
+        "(+/ 2 4 6 8 10) ÷ (≢ 2 4 6 8 10)",
+        &[6.0],
+        "wiki ex9: average expanded",
+    );
+
+    // Ex 10-11: Pseudocode explaining forks — not testable
+    // (f g h) ⍵  ↔  (f ⍵) g (h ⍵)
+
+    // --- Comma-separated text ---
+
+    // Ex 12: ','≠'comma,delimited,text' → 1 1 1 1 1 0 1 1 1 1 1 1 1 1 1 0 1 1 1 1
+    assert_apl(
+        "','≠'comma,delimited,text'",
+        &[
+            1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+        ],
+        "wiki ex12: comma not-equal mask",
+    );
+
+    // Ex 13: ','⊢'comma,delimited,text' → comma,delimited,text
+    let val = eval_to_val("','⊢'comma,delimited,text'", &mut env).unwrap();
+    assert_eq!(format_val(&val), "comma,delimited,text", "wiki ex13: right tack");
+
+    // Ex 14: 1 1 0 1 1 1⊆'Hello!' → 'He' 'lo!'
+    let val = eval_to_val("1 1 0 1 1 1⊆'Hello!'", &mut env).unwrap();
+    assert_eq!(format_val(&val), "(He) (lo!)", "wiki ex14: partition string");
+
+    // Ex 15: ','(≠⊆⊢)'comma,delimited,text' → 'comma' 'delimited' 'text'
+    // Requires dyadic trains — not yet supported
+    // assert_apl_str("','(≠⊆⊢)'comma,delimited,text'", "(comma) (delimited) (text)");
+
+    // Ex 16: (','≠s)⊂s←'comma,delimited,text'
+    // Multi-statement: assign s, then partitioned enclose
+    // With ⊂, each 1 in the mask starts a new partition, 0 continues.
+    // The mask ','≠s has 1s at non-comma positions, so each character starts
+    // its own group (since consecutive 1s each start a new partition in ⊂).
+    // This is different from ⊆ (partition) which groups consecutive 1s.
+    // (The wiki shows this expression without expected output.)
+    eval_to_val("s←'comma,delimited,text'", &mut env).unwrap();
+    let val = eval_to_val("(','≠s)⊂s", &mut env).unwrap();
+    assert_eq!(val.data.len(), 18, "wiki ex16: 18 partitions (one per non-comma char)");
+
+    // --- Membership ---
+
+    // Ex 17: 'mississippi'∊'sp' → 0 0 1 1 0 1 1 0 1 1 0
+    // ∈ (membership) not implemented
+    // assert_apl("'mississippi'∊'sp'", &[0.0,0.0,1.0,1.0,0.0,1.0,1.0,0.0,1.0,1.0,0.0], "wiki ex17");
+
+    // Ex 18: ⍸'mississippi'∊'sp' → 3 4 6 7 9 10
+    // Requires ∈
+    // assert_apl("⍸'mississippi'∊'sp'", &[3.0,4.0,6.0,7.0,9.0,10.0], "wiki ex18");
+
+    // Ex 19: 'mississippi' (⍸∊) 'sp' → 3 4 6 7 9 10
+    // Requires ∈ and dyadic trains
+    // assert_apl("'mississippi' (⍸∊) 'sp'", &[3.0,4.0,6.0,7.0,9.0,10.0], "wiki ex19");
+
+    // --- Outer product with characters ---
+
+    // Ex 20: 'abcd' ∘.= 'cabbage' → 4×7 boolean matrix
+    assert_apl(
+        "'abcd' ∘.= 'cabbage'",
+        &[
+            0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+        ],
+        "wiki ex20: outer product char equality",
+    );
+
+    // Ex 21: +/ 'abcd' ∘.= 'cabbage' → 2 2 1 0
+    assert_apl(
+        "+/ 'abcd' ∘.= 'cabbage'",
+        &[2.0, 2.0, 1.0, 0.0],
+        "wiki ex21: letter frequency",
+    );
+
+    // --- Bracket matching ---
+
+    // Ex 22: '()'∘.='plus(square(a),...' → 2×49 boolean matrix
+    let val = eval_to_val(
+        "'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'",
+        &mut env,
+    ).unwrap();
+    assert_eq!(val.shape, vec![2, 49], "wiki ex22: bracket outer product shape");
+
+    // Ex 23: -⌿'()'∘.=... → nesting delta
+    // ⌿ not implemented; for a 2-row matrix, -⌿ is the same as -/ (column-wise sub)
+    // But our -/ reduces along last axis, not first. This is NOT equivalent.
+    // Skipped: requires ⌿ (reduce first axis)
+    // assert_apl("-⌿'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'", &[...]);
+
+    // Ex 24: +\-⌿'()'∘.=... → nesting depth
+    // Requires ⌿
+    // assert_apl("+\\-⌿'()'∘.='plus(...)'", &[...]);
+
+    // Ex 25: 'ABBA'⍳'ABC' → 1 2 5
+    assert_apl("'ABBA'⍳'ABC'", &[1.0, 2.0, 5.0], "wiki ex25a: index of chars");
+
+    // Ex 25 (part 2): '()'⍳'plus(square...' → bracket position mapping
+    assert_apl(
+        "'()'⍳'plus(square(a),plus(square(b),times(2,plus(a,b)))'",
+        &[
+            3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0,
+            2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0,
+            1.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0,
+            3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 2.0, 2.0, 2.0,
+        ],
+        "wiki ex25b: bracket index mapping",
+    );
+
+    // Ex 26: 1 ¯1 0['()'⍳'plus(square...'] → nesting delta via indexing
+    // Requires array indexing x[expr] for reading — not supported (only x[i]←v)
+    // assert_apl("1 ¯1 0['()'⍳'plus(square(a),...']", &[...]);
+
+    // Ex 27: +\1 ¯1 0['()'⍳'plus(square...'] → nesting depth via scan
+    // Requires array indexing for reading
+    // assert_apl("+\\1 ¯1 0['()'⍳'plus(...)']", &[...]);
+
+    // --- Cardan grille cipher ---
+
+    // Ex 28: ⎕←(grid grille)←5 5∘⍴¨'VRYIA...' '⌺⌺⌺ ⌺...'
+    // Requires ⎕←, multiple assignment, and ∘⍴¨ (bind+each)
+    // Skipped
+
+    // Ex 29: grid[⍸grille=' '] → ILIKEAPL
+    // Requires array indexing for reading and 2D indexing
+    // Skipped
+
+    // Ex 30: (' '=,grille)/,grid → ILIKEAPL
+    // Requires the grille/grid variables from ex28
+    // Skipped
+}
+
 fn assert_apl_env(expr: &str, env: &mut Env, expected: &[f64], desc: &str) {
     let result = apl!(expr, env).unwrap_or_else(|e| panic!("[{desc}] `{expr}` failed: {e}"));
     assert_eq!(
