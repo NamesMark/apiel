@@ -228,6 +228,9 @@ fn reference_tests() {
         ("⍴ ⍉ 2 3 ⍴ ⍳ 6", &[3.0, 2.0], "shape of transposed"),
         ("⍉ 1 2 3", &[1.0, 2.0, 3.0], "transpose vector noop"),
         ("⍉ 5", &[5.0], "transpose scalar noop"),
+        // Dyadic transpose ⍉
+        ("1 2 ⍉ 2 3 ⍴ ⍳ 6", &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "dyadic transpose: identity perm"),
+        ("2 1 ⍉ 2 3 ⍴ ⍳ 6", &[1.0, 4.0, 2.0, 5.0, 3.0, 6.0], "dyadic transpose: swap axes"),
         // Bool ops (∧ ∨ ⍲ ⍱)
         ("1 ∧ 1", &[1.0], "and 1 1"),
         ("1 ∧ 0", &[0.0], "and 1 0"),

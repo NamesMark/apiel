@@ -191,6 +191,9 @@ Term -> Result<Expr, ()>:
     | Factor 'ENCLOSE' Term {
         Ok(Expr::PartitionedEnclose{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'TRANSPOSE' Term {
+        Ok(Expr::DyadicTranspose{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor Operator 'DOT' Operator Term {
         match ($2, $4) {
             (Ok(f), Ok(g)) => Ok(Expr::InnerProduct{ span: $span, lhs: Box::new($1?), f, g, rhs: Box::new($5?) }),
@@ -874,6 +877,11 @@ pub enum Expr {
     Transpose {
         span: Span,
         arg: Box<Expr>,
+    },
+    DyadicTranspose {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
     },
     GradeUp {
         span: Span,
