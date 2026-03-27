@@ -7,7 +7,7 @@ description = "A subset of the APL programming language implemented in Rust. Exp
 keywords = ["apl", "array", "interpreter", "language", "math"]
 categories = ["mathematics", "compilers"]
 homepage = "https://github.com/NamesMark/apiel"
-repository = "https://github.com/NamesMark/apiel/apiel"
+repository = "https://github.com/NamesMark/apiel/tree/main/apiel"
 license = "MIT"
 build = "build.rs"
 
