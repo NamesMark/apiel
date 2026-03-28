@@ -1,7 +1,7 @@
 %start Expr
 %avoid_insert "INT"
 %expect-unused Unmatched "UNMATCHED"
-%expect 1
+%expect 3
 %%
 Expr -> Result<Expr, ()>:
     Term { $1 }
@@ -220,6 +220,9 @@ Term -> Result<Expr, ()>:
     | Factor 'FIND' Term {
         Ok(Expr::Find{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
+    | Factor 'MEMBERSHIP' Term {
+        Ok(Expr::Membership{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
+      }
     | Factor 'ENCLOSE' Term {
         Ok(Expr::PartitionedEnclose{ span: $span, lhs: Box::new($1?), rhs: Box::new($3?) })
       }
@@ -386,6 +389,9 @@ DfnBody -> Result<Expr, ()>:
 
 Factor -> Result<Expr, ()>:
       '(' Expr ')' { $2 }
+    | Factor '[' Expr ']' {
+        Ok(Expr::IndexRead{ span: $span, array: Box::new($1?), indices: Box::new($3?) })
+      }
 
     | 'VEC' {
         let elements = match $1 {
@@ -452,6 +458,18 @@ Factor -> Result<Expr, ()>:
     | Operator '/' 'EACH' Term {
         match $1 {
             Ok(op) => Ok(Expr::ReduceEach{ span: $span, operator: op, term: Box::new($4?) }),
+            Err(_) => Err(())
+        }
+    }
+    | Operator 'REDUCEFIRST' Term {
+        match $1 {
+            Ok(op) => Ok(Expr::ReduceFirst{ span: $span, operator: op, term: Box::new($3?) }),
+            Err(_) => Err(())
+        }
+    }
+    | Operator 'SCANFIRST' Term {
+        match $1 {
+            Ok(op) => Ok(Expr::ScanFirst{ span: $span, operator: op, term: Box::new($3?) }),
             Err(_) => Err(())
         }
     }
@@ -1028,6 +1046,26 @@ pub enum Expr {
         span: Span,
         operator: Operator,
         term: Box<Expr>,
+    },
+    ReduceFirst {
+        span: Span,
+        operator: Operator,
+        term: Box<Expr>,
+    },
+    ScanFirst {
+        span: Span,
+        operator: Operator,
+        term: Box<Expr>,
+    },
+    Membership {
+        span: Span,
+        lhs: Box<Expr>,
+        rhs: Box<Expr>,
+    },
+    IndexRead {
+        span: Span,
+        array: Box<Expr>,
+        indices: Box<Expr>,
     },
 
     // Values

@@ -43,7 +43,7 @@ fn is_monadic_fn_tok(t: &str) -> bool {
     matches!(
         t,
         "⍴" | "⌽" | "⍳" | "⍋" | "⍒" | "≢" | "≡" | "∪" | "⊃" | "⊂" | "⍉" | "~" | "⊣"
-            | "⊢" | "⌹" | "⍸" | "⍷" | "↑" | "↓"
+            | "⊢" | "⌹" | "⍸" | "⍷" | "↑" | "↓" | "∊" | "⊆" | "⌷"
     )
 }
 
@@ -143,9 +143,11 @@ fn try_parse_train(tokens: &[Tok]) -> Option<Vec<TrainFn>> {
             continue;
         }
 
-        // Operator possibly followed by / or \ (reduce/scan)
+        // Operator possibly followed by / or \ or ⌿ or ⍀ (reduce/scan variants)
         if is_operator_tok(t) {
-            if i + 1 < tokens.len() && (tokens[i + 1].text == "/" || tokens[i + 1].text == "\\") {
+            if i + 1 < tokens.len()
+                && matches!(tokens[i + 1].text, "/" | "\\" | "⌿" | "⍀")
+            {
                 fns.push(TrainFn::Derived(format!("{}{}", t, tokens[i + 1].text)));
                 i += 2;
                 continue;
@@ -180,8 +182,8 @@ fn try_parse_train(tokens: &[Tok]) -> Option<Vec<TrainFn>> {
     }
 }
 
-/// Build a dfn string from train function references.
-fn build_train_dfn(fns: &[TrainFn]) -> String {
+/// Build a monadic dfn string from train function references.
+fn build_train_dfn_monadic(fns: &[TrainFn]) -> String {
     if fns.len() == 3 {
         // Fork: (f g h) -> {(f⍵)g(h⍵)}
         let f_app = fns[0].apply_monadic();
@@ -194,6 +196,41 @@ fn build_train_dfn(fns: &[TrainFn]) -> String {
         let g_app = fns[1].apply_monadic();
         format!("{{{f}({g_app})}}")
     }
+}
+
+/// Build a dyadic dfn string from train function references.
+fn build_train_dfn_dyadic(fns: &[TrainFn]) -> String {
+    if fns.len() == 3 {
+        // Fork: ⍺(f g h)⍵ -> {(⍺ f ⍵)g(⍺ h ⍵)}
+        let f = fns[0].text();
+        let g = fns[1].text();
+        let h = fns[2].text();
+        format!("{{(⍺{f}⍵){g}(⍺{h}⍵)}}")
+    } else {
+        // Atop: ⍺(f g)⍵ -> {f(⍺ g ⍵)}
+        let f = fns[0].text();
+        let g = fns[1].text();
+        format!("{{{f}(⍺{g}⍵)}}")
+    }
+}
+
+/// Check if a token text represents a value (could be left arg of a dyadic train).
+fn is_left_arg_tok(t: &str) -> bool {
+    if t == ")" || t == "]" || t == "⍵" || t == "⍺" {
+        return true;
+    }
+    if t.starts_with('\'') {
+        return true; // STRING
+    }
+    let first = t.chars().next().unwrap_or(' ');
+    if first.is_ascii_digit() || first == '¯' {
+        return true;
+    }
+    // NAME (identifier) — could be variable as left arg
+    if is_name_tok(t) {
+        return true;
+    }
+    false
 }
 
 /// Rewrite train patterns using token-level analysis.
@@ -243,7 +280,13 @@ fn rewrite_trains(input: &str) -> String {
                 // Inner tokens: i+1 .. j (exclusive of parens)
                 let inner = &tokens[i + 1..j];
                 if let Some(fns) = try_parse_train(inner) {
-                    let replacement = build_train_dfn(&fns);
+                    // Check if previous token is a value (dyadic context)
+                    let is_dyadic = i > 0 && is_left_arg_tok(tokens[i - 1].text);
+                    let replacement = if is_dyadic {
+                        build_train_dfn_dyadic(&fns)
+                    } else {
+                        build_train_dfn_monadic(&fns)
+                    };
                     replacements.push((tokens[i].start, tokens[j].end, replacement));
                     i = j + 1;
                     continue;

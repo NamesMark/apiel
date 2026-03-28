@@ -10,6 +10,7 @@ fn main() {
         .lrpar_config(|ctp| {
             ctp.yacckind(YaccKind::Grmtools)
                 .rust_edition(lrpar::RustEdition::Rust2021)
+                .error_on_conflicts(false)
                 .grammar_in_src_dir("apiel.y")
                 .unwrap()
         })

@@ -1205,6 +1205,138 @@ pub fn eval(
             }
             Ok(Val::vector(data))
         }
+        Expr::ReduceFirst {
+            span,
+            operator,
+            term,
+        } => {
+            debug!("Reduce First Axis");
+            let term_eval = eval(lexer, *term, env)?;
+            let op_fn = get_operator_fn(operator);
+
+            if term_eval.shape.len() <= 1 {
+                // Vector: same as regular reduce
+                let result = term_eval
+                    .data
+                    .iter()
+                    .rev()
+                    .cloned()
+                    .try_fold(None, |acc, n| match acc {
+                        None => Some(Some(n)),
+                        Some(right) => op_fn(&n, &right).map(Some),
+                    })
+                    .flatten();
+                result
+                    .map(Val::scalar)
+                    .ok_or((span, "Arithmetic error in ReduceFirst"))
+            } else {
+                // Higher-rank: reduce along FIRST axis (columns)
+                let first_dim = term_eval.shape[0];
+                let stride: usize = term_eval.data.len() / first_dim;
+                let mut results = Vec::with_capacity(stride);
+                for col in 0..stride {
+                    let column: Vec<Scalar> = (0..first_dim)
+                        .map(|row| term_eval.data[row * stride + col].clone())
+                        .collect();
+                    let result = column
+                        .iter()
+                        .rev()
+                        .cloned()
+                        .try_fold(None::<Scalar>, |acc, n| match acc {
+                            None => Some(Some(n)),
+                            Some(right) => op_fn(&n, &right).map(Some),
+                        })
+                        .flatten()
+                        .ok_or((span, "Arithmetic error in ReduceFirst"))?;
+                    results.push(result);
+                }
+                let new_shape = term_eval.shape[1..].to_vec();
+                if new_shape.is_empty() {
+                    Ok(Val::scalar(results.into_iter().next().unwrap()))
+                } else {
+                    Ok(Val::new(new_shape, results))
+                }
+            }
+        }
+        Expr::ScanFirst {
+            span,
+            operator,
+            term,
+        } => {
+            debug!("Scan First Axis");
+            let term_eval = eval(lexer, *term, env)?;
+            let op_fn = get_operator_fn(operator);
+
+            if term_eval.shape.len() <= 1 {
+                // Vector: same as regular scan
+                let mut data = Vec::with_capacity(term_eval.data.len());
+                for i in 0..term_eval.data.len() {
+                    let prefix = &term_eval.data[..=i];
+                    let result = prefix
+                        .iter()
+                        .rev()
+                        .cloned()
+                        .try_fold(None::<Scalar>, |acc, n| match acc {
+                            None => Some(Some(n)),
+                            Some(right) => op_fn(&n, &right).map(Some),
+                        })
+                        .flatten()
+                        .ok_or((span, "Arithmetic error in ScanFirst"))?;
+                    data.push(result);
+                }
+                Ok(Val::vector(data))
+            } else {
+                // Higher-rank: scan along FIRST axis (columns)
+                let first_dim = term_eval.shape[0];
+                let stride: usize = term_eval.data.len() / first_dim;
+                let mut data = term_eval.data.clone();
+                for col in 0..stride {
+                    for row in 1..first_dim {
+                        let prev = data[(row - 1) * stride + col].clone();
+                        let curr = data[row * stride + col].clone();
+                        data[row * stride + col] = op_fn(&prev, &curr)
+                            .ok_or((span, "Arithmetic error in ScanFirst"))?;
+                    }
+                }
+                Ok(Val::new(term_eval.shape.clone(), data))
+            }
+        }
+        Expr::Membership { span: _, lhs, rhs } => {
+            debug!("Dyadic Membership");
+            let lhs_eval = eval(lexer, *lhs, env)?;
+            let rhs_eval = eval(lexer, *rhs, env)?;
+            let data = lhs_eval
+                .data
+                .iter()
+                .map(|l| {
+                    let found = rhs_eval.data.iter().any(|r| l == r);
+                    Scalar::Integer(if found { 1 } else { 0 })
+                })
+                .collect();
+            Ok(Val::new(lhs_eval.shape.clone(), data))
+        }
+        Expr::IndexRead { span, array, indices } => {
+            debug!("Index Read");
+            let arr = eval(lexer, *array, env)?;
+            let idx_val = eval(lexer, *indices, env)?;
+            let indices: Vec<usize> = idx_val
+                .data
+                .iter()
+                .map(|s| {
+                    let i: usize = s.clone().try_into().map_err(|_| (span, "Index must be integer"))?;
+                    if i < 1 || i > arr.data.len() {
+                        return Err((span, "Index out of bounds"));
+                    }
+                    Ok(i - 1)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+            let data: Vec<Scalar> = indices.iter().map(|&i| arr.data[i].clone()).collect();
+            if data.len() == 1 {
+                Ok(Val::scalar(data.into_iter().next().unwrap()))
+            } else {
+                Ok(Val::vector(data))
+            }
+        }
         Expr::Variable { span, name } => {
             debug!("Variable: {name}");
             env.vars
