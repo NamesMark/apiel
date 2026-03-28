@@ -505,8 +505,7 @@ fn aplwiki_simple_examples() {
     // {(+⌿⍵)÷≢⍵}
 
     // Ex 2: +⌿ 1 2 3 4 5 6 → 21
-    // ⌿ (reduce first) not implemented; adapted to / (equivalent for vectors)
-    assert_apl("+/ 1 2 3 4 5 6", &[21.0], "wiki ex2: sum reduce");
+    assert_apl("+⌿ 1 2 3 4 5 6", &[21.0], "wiki ex2: sum reduce first");
 
     // Ex 3: 1+2+3+4+5+6 → 21
     assert_apl("1+2+3+4+5+6", &[21.0], "wiki ex3: chained addition");
@@ -518,24 +517,24 @@ fn aplwiki_simple_examples() {
     // Requires ⌿ and array-of-strings syntax — skipped
 
     // Ex 6: {(+⌿⍵)÷≢⍵} 3 4.5 7 21 → 8.875
-    // Adapted: ⌿→/, mixed int/float vector not supported so using all ints
+    // Adapted: mixed int/float vector not supported by VEC lexer, using all ints
     assert_apl(
-        "{(+/⍵)÷≢⍵} 2 4 6 8 10",
+        "{(+⌿⍵)÷≢⍵} 2 4 6 8 10",
         &[6.0],
         "wiki ex6: average via dfn",
     );
 
     // Ex 7: (+⌿÷≢) 3 4.5 7 21 → 8.875
-    // Adapted: ⌿→/, all ints
-    assert_apl("(+/ ÷ ≢) 2 4 6 8 10", &[6.0], "wiki ex7: average via fork");
+    // Adapted: all ints (VEC lexer limitation)
+    assert_apl("(+⌿ ÷ ≢) 2 4 6 8 10", &[6.0], "wiki ex7: average via fork");
 
-    // Ex 8: Same as 7, just showing spacing: (+⌿ ÷ ≢) 3 4.5 7 21
+    // Ex 8: Same as 7, just showing spacing
     // Already covered by ex7
 
     // Ex 9: (+⌿ 3 4.5 7 21) ÷ (≢ 3 4.5 7 21) → 8.875
-    // Adapted: ⌿→/, all ints
+    // Adapted: all ints
     assert_apl(
-        "(+/ 2 4 6 8 10) ÷ (≢ 2 4 6 8 10)",
+        "(+⌿ 2 4 6 8 10) ÷ (≢ 2 4 6 8 10)",
         &[6.0],
         "wiki ex9: average expanded",
     );
@@ -564,8 +563,11 @@ fn aplwiki_simple_examples() {
     assert_eq!(format_val(&val), "(He) (lo!)", "wiki ex14: partition string");
 
     // Ex 15: ','(≠⊆⊢)'comma,delimited,text' → 'comma' 'delimited' 'text'
-    // Requires dyadic trains — not yet supported
-    // assert_apl_str("','(≠⊆⊢)'comma,delimited,text'", "(comma) (delimited) (text)");
+    // Dyadic fork: ⍺(f g h)⍵ = (⍺ f ⍵) g (⍺ h ⍵)
+    // = (','≠'comma,...') ⊆ (','⊢'comma,...')
+    // = boolean_mask ⊆ original_string
+    let val = eval_to_val("','(≠ ⊆ ⊢)'comma,delimited,text'", &mut env).unwrap();
+    assert_eq!(format_val(&val), "(comma) (delimited) (text)", "wiki ex15: dyadic fork split CSV");
 
     // Ex 16: (','≠s)⊂s←'comma,delimited,text'
     // Multi-statement: assign s, then partitioned enclose
@@ -581,16 +583,26 @@ fn aplwiki_simple_examples() {
     // --- Membership ---
 
     // Ex 17: 'mississippi'∊'sp' → 0 0 1 1 0 1 1 0 1 1 0
-    // ∈ (membership) not implemented
-    // assert_apl("'mississippi'∊'sp'", &[0.0,0.0,1.0,1.0,0.0,1.0,1.0,0.0,1.0,1.0,0.0], "wiki ex17");
+    assert_apl(
+        "'mississippi'∊'sp'",
+        &[0.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0],
+        "wiki ex17: membership",
+    );
 
     // Ex 18: ⍸'mississippi'∊'sp' → 3 4 6 7 9 10
-    // Requires ∈
-    // assert_apl("⍸'mississippi'∊'sp'", &[3.0,4.0,6.0,7.0,9.0,10.0], "wiki ex18");
+    assert_apl(
+        "⍸'mississippi'∊'sp'",
+        &[3.0, 4.0, 6.0, 7.0, 9.0, 10.0],
+        "wiki ex18: where membership",
+    );
 
     // Ex 19: 'mississippi' (⍸∊) 'sp' → 3 4 6 7 9 10
-    // Requires ∈ and dyadic trains
-    // assert_apl("'mississippi' (⍸∊) 'sp'", &[3.0,4.0,6.0,7.0,9.0,10.0], "wiki ex19");
+    // Dyadic atop: ⍺(⍸∊)⍵ = ⍸(⍺∊⍵)
+    assert_apl(
+        "'mississippi' (⍸ ∊) 'sp'",
+        &[3.0, 4.0, 6.0, 7.0, 9.0, 10.0],
+        "wiki ex19: dyadic atop where-membership",
+    );
 
     // --- Outer product with characters ---
 
@@ -622,15 +634,29 @@ fn aplwiki_simple_examples() {
     ).unwrap();
     assert_eq!(val.shape, vec![2, 49], "wiki ex22: bracket outer product shape");
 
-    // Ex 23: -⌿'()'∘.=... → nesting delta
-    // ⌿ not implemented; for a 2-row matrix, -⌿ is the same as -/ (column-wise sub)
-    // But our -/ reduces along last axis, not first. This is NOT equivalent.
-    // Skipped: requires ⌿ (reduce first axis)
-    // assert_apl("-⌿'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'", &[...]);
+    // Ex 23: -⌿'()'∘.=... → nesting delta (row0 - row1 column-wise)
+    assert_apl(
+        "-⌿'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'",
+        &[
+            0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+            -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -1.0, -1.0,
+        ],
+        "wiki ex23: bracket nesting delta",
+    );
 
-    // Ex 24: +\-⌿'()'∘.=... → nesting depth
-    // Requires ⌿
-    // assert_apl("+\\-⌿'()'∘.='plus(...)'", &[...]);
+    // Ex 24: +\-⌿'()'∘.=... → cumulative nesting depth
+    assert_apl(
+        "+\\-⌿'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'",
+        &[
+            0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0,
+            3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 2.0, 1.0,
+        ],
+        "wiki ex24: bracket nesting depth",
+    );
 
     // Ex 25: 'ABBA'⍳'ABC' → 1 2 5
     assert_apl("'ABBA'⍳'ABC'", &[1.0, 2.0, 5.0], "wiki ex25a: index of chars");
@@ -648,12 +674,28 @@ fn aplwiki_simple_examples() {
     );
 
     // Ex 26: 1 ¯1 0['()'⍳'plus(square...'] → nesting delta via indexing
-    // Requires array indexing x[expr] for reading — not supported (only x[i]←v)
-    // assert_apl("1 ¯1 0['()'⍳'plus(square(a),...']", &[...]);
+    assert_apl(
+        "1 ¯1 0['()'⍳'plus(square(a),plus(square(b),times(2,plus(a,b)))']",
+        &[
+            0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
+            -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -1.0, -1.0,
+        ],
+        "wiki ex26: nesting delta via indexing",
+    );
 
     // Ex 27: +\1 ¯1 0['()'⍳'plus(square...'] → nesting depth via scan
-    // Requires array indexing for reading
-    // assert_apl("+\\1 ¯1 0['()'⍳'plus(...)']", &[...]);
+    assert_apl(
+        "+\\1 ¯1 0['()'⍳'plus(square(a),plus(square(b),times(2,plus(a,b)))']",
+        &[
+            0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0,
+            3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 2.0, 1.0,
+        ],
+        "wiki ex27: nesting depth via scan+indexing",
+    );
 
     // --- Cardan grille cipher ---
 
