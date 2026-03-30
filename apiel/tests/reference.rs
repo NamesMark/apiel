@@ -229,8 +229,16 @@ fn reference_tests() {
         ("⍉ 1 2 3", &[1.0, 2.0, 3.0], "transpose vector noop"),
         ("⍉ 5", &[5.0], "transpose scalar noop"),
         // Dyadic transpose ⍉
-        ("1 2 ⍉ 2 3 ⍴ ⍳ 6", &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], "dyadic transpose: identity perm"),
-        ("2 1 ⍉ 2 3 ⍴ ⍳ 6", &[1.0, 4.0, 2.0, 5.0, 3.0, 6.0], "dyadic transpose: swap axes"),
+        (
+            "1 2 ⍉ 2 3 ⍴ ⍳ 6",
+            &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0],
+            "dyadic transpose: identity perm",
+        ),
+        (
+            "2 1 ⍉ 2 3 ⍴ ⍳ 6",
+            &[1.0, 4.0, 2.0, 5.0, 3.0, 6.0],
+            "dyadic transpose: swap axes",
+        ),
         // Bool ops (∧ ∨ ⍲ ⍱)
         ("1 ∧ 1", &[1.0], "and 1 1"),
         ("1 ∧ 0", &[0.0], "and 1 0"),
@@ -417,15 +425,35 @@ fn reference_tests() {
         ("⊣ 1 2 3", &[1.0, 2.0, 3.0], "monadic left tack vector"),
         ("5 ⊢ 42", &[42.0], "dyadic right tack returns right"),
         ("5 ⊣ 42", &[5.0], "dyadic left tack returns left"),
-        ("1 2 3 ⊢ 4 5 6", &[4.0, 5.0, 6.0], "dyadic right tack vectors"),
-        ("1 2 3 ⊣ 4 5 6", &[1.0, 2.0, 3.0], "dyadic left tack vectors"),
+        (
+            "1 2 3 ⊢ 4 5 6",
+            &[4.0, 5.0, 6.0],
+            "dyadic right tack vectors",
+        ),
+        (
+            "1 2 3 ⊣ 4 5 6",
+            &[1.0, 2.0, 3.0],
+            "dyadic left tack vectors",
+        ),
         // Tally ≢
         ("≢ 1 2 3 4 5", &[5.0], "tally of vector"),
         ("≢ 42", &[1.0], "tally of scalar"),
         // Find ⍷
-        ("2 3 ⍷ 1 2 3 4 5", &[0.0, 1.0, 0.0, 0.0, 0.0], "find subsequence"),
-        ("5 ⍷ 1 2 3 4 5", &[0.0, 0.0, 0.0, 0.0, 1.0], "find single element"),
-        ("3 4 5 ⍷ 1 2 3 4 5", &[0.0, 0.0, 1.0, 0.0, 0.0], "find at end"),
+        (
+            "2 3 ⍷ 1 2 3 4 5",
+            &[0.0, 1.0, 0.0, 0.0, 0.0],
+            "find subsequence",
+        ),
+        (
+            "5 ⍷ 1 2 3 4 5",
+            &[0.0, 0.0, 0.0, 0.0, 1.0],
+            "find single element",
+        ),
+        (
+            "3 4 5 ⍷ 1 2 3 4 5",
+            &[0.0, 0.0, 1.0, 0.0, 0.0],
+            "find at end",
+        ),
         ("9 ⍷ 1 2 3", &[0.0, 0.0, 0.0], "find missing element"),
         // Extended operator reductions
         ("∧/ 1 1 1 0", &[0.0], "and-reduce"),
@@ -433,7 +461,11 @@ fn reference_tests() {
         ("∨/ 0 0 1 0", &[1.0], "or-reduce (any)"),
         ("∨/ 0 0 0 0", &[0.0], "or-reduce all false"),
         ("≠/ 1 0 1 1", &[1.0], "neq-reduce (parity)"),
-        ("1 2 3 ∘.≤ 1 2 3", &[1.0,1.0,1.0, 0.0,1.0,1.0, 0.0,0.0,1.0], "outer product leq"),
+        (
+            "1 2 3 ∘.≤ 1 2 3",
+            &[1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0],
+            "outer product leq",
+        ),
         // Commute ⍨
         ("+⍨ 3", &[6.0], "selfie: 3+3"),
         ("+⍨ 1 2 3", &[2.0, 4.0, 6.0], "selfie vector: double"),
@@ -442,7 +474,11 @@ fn reference_tests() {
         ("3 ÷⍨ 12", &[4.0], "commute: 12÷3"),
         ("2 *⍨ 3", &[9.0], "commute: 3*2=9"),
         // Power operator ⍣
-        ("{⍵+1}⍣3 ⍳ 5", &[4.0, 5.0, 6.0, 7.0, 8.0], "power: increment 3 times"),
+        (
+            "{⍵+1}⍣3 ⍳ 5",
+            &[4.0, 5.0, 6.0, 7.0, 8.0],
+            "power: increment 3 times",
+        ),
         ("{⍵×2}⍣4 (1)", &[16.0], "power: double 4 times"),
         ("{⍵+1}⍣0 (5)", &[5.0], "power 0 is identity"),
         // Compose ∘
@@ -458,15 +494,31 @@ fn reference_tests() {
         ("(⌊ ÷) 7", &[0.0], "atop: floor(reciprocal(7))"),
         // Rank operator ⍤
         ("{+/⍵}⍤1 ⊢ 2 3 ⍴ ⍳ 6", &[6.0, 15.0], "rank 1: sum each row"),
-        ("{⌽⍵}⍤1 ⊢ 2 3 ⍴ ⍳ 6", &[3.0, 2.0, 1.0, 6.0, 5.0, 4.0], "rank 1: reverse each row"),
+        (
+            "{⌽⍵}⍤1 ⊢ 2 3 ⍴ ⍳ 6",
+            &[3.0, 2.0, 1.0, 6.0, 5.0, 4.0],
+            "rank 1: reverse each row",
+        ),
         // Over ⍥
         ("{⍵×2}⍥{⍵+1} 5", &[12.0], "over monadic: (5+1)×2 = 12"),
         ("3 {⍺+⍵}⍥{⍵×⍵} 4", &[25.0], "over dyadic: 3²+4² = 25"),
         // At operator @
-        ("{⍵×10}@(2 3) ⊢ ⍳ 5", &[1.0, 20.0, 30.0, 4.0, 5.0], "at: multiply at indices"),
-        ("{0}@(1 3 5) ⊢ ⍳ 5", &[0.0, 2.0, 0.0, 4.0, 0.0], "at: replace at indices"),
+        (
+            "{⍵×10}@(2 3) ⊢ ⍳ 5",
+            &[1.0, 20.0, 30.0, 4.0, 5.0],
+            "at: multiply at indices",
+        ),
+        (
+            "{0}@(1 3 5) ⊢ ⍳ 5",
+            &[0.0, 2.0, 0.0, 4.0, 0.0],
+            "at: replace at indices",
+        ),
         // Key operator ⌸
-        ("{≢⍵}⌸ 1 1 2 3 3 3", &[2.0, 1.0, 3.0], "key: count each group"),
+        (
+            "{≢⍵}⌸ 1 1 2 3 3 3",
+            &[2.0, 1.0, 3.0],
+            "key: count each group",
+        ),
         ("{⍺}⌸ 1 1 2 3 3 3", &[1.0, 2.0, 3.0], "key: unique keys"),
     ];
 
@@ -518,11 +570,7 @@ fn aplwiki_simple_examples() {
 
     // Ex 6: {(+⌿⍵)÷≢⍵} 3 4.5 7 21 → 8.875
     // Adapted: mixed int/float vector not supported by VEC lexer, using all ints
-    assert_apl(
-        "{(+⌿⍵)÷≢⍵} 2 4 6 8 10",
-        &[6.0],
-        "wiki ex6: average via dfn",
-    );
+    assert_apl("{(+⌿⍵)÷≢⍵} 2 4 6 8 10", &[6.0], "wiki ex6: average via dfn");
 
     // Ex 7: (+⌿÷≢) 3 4.5 7 21 → 8.875
     // Adapted: all ints (VEC lexer limitation)
@@ -548,26 +596,38 @@ fn aplwiki_simple_examples() {
     assert_apl(
         "','≠'comma,delimited,text'",
         &[
-            1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.0, 1.0,
+            1.0, 1.0, 1.0,
         ],
         "wiki ex12: comma not-equal mask",
     );
 
     // Ex 13: ','⊢'comma,delimited,text' → comma,delimited,text
     let val = eval_to_val("','⊢'comma,delimited,text'", &mut env).unwrap();
-    assert_eq!(format_val(&val), "comma,delimited,text", "wiki ex13: right tack");
+    assert_eq!(
+        format_val(&val),
+        "comma,delimited,text",
+        "wiki ex13: right tack"
+    );
 
     // Ex 14: 1 1 0 1 1 1⊆'Hello!' → 'He' 'lo!'
     let val = eval_to_val("1 1 0 1 1 1⊆'Hello!'", &mut env).unwrap();
-    assert_eq!(format_val(&val), "(He) (lo!)", "wiki ex14: partition string");
+    assert_eq!(
+        format_val(&val),
+        "(He) (lo!)",
+        "wiki ex14: partition string"
+    );
 
     // Ex 15: ','(≠⊆⊢)'comma,delimited,text' → 'comma' 'delimited' 'text'
     // Dyadic fork: ⍺(f g h)⍵ = (⍺ f ⍵) g (⍺ h ⍵)
     // = (','≠'comma,...') ⊆ (','⊢'comma,...')
     // = boolean_mask ⊆ original_string
     let val = eval_to_val("','(≠ ⊆ ⊢)'comma,delimited,text'", &mut env).unwrap();
-    assert_eq!(format_val(&val), "(comma) (delimited) (text)", "wiki ex15: dyadic fork split CSV");
+    assert_eq!(
+        format_val(&val),
+        "(comma) (delimited) (text)",
+        "wiki ex15: dyadic fork split CSV"
+    );
 
     // Ex 16: (','≠s)⊂s←'comma,delimited,text'
     // Multi-statement: assign s, then partitioned enclose
@@ -578,7 +638,11 @@ fn aplwiki_simple_examples() {
     // (The wiki shows this expression without expected output.)
     eval_to_val("s←'comma,delimited,text'", &mut env).unwrap();
     let val = eval_to_val("(','≠s)⊂s", &mut env).unwrap();
-    assert_eq!(val.data.len(), 18, "wiki ex16: 18 partitions (one per non-comma char)");
+    assert_eq!(
+        val.data.len(),
+        18,
+        "wiki ex16: 18 partitions (one per non-comma char)"
+    );
 
     // --- Membership ---
 
@@ -610,10 +674,8 @@ fn aplwiki_simple_examples() {
     assert_apl(
         "'abcd' ∘.= 'cabbage'",
         &[
-            0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-            0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0,
-            1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+            0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
         ],
         "wiki ex20: outer product char equality",
     );
@@ -631,17 +693,21 @@ fn aplwiki_simple_examples() {
     let val = eval_to_val(
         "'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'",
         &mut env,
-    ).unwrap();
-    assert_eq!(val.shape, vec![2, 49], "wiki ex22: bracket outer product shape");
+    )
+    .unwrap();
+    assert_eq!(
+        val.shape,
+        vec![2, 49],
+        "wiki ex22: bracket outer product shape"
+    );
 
     // Ex 23: -⌿'()'∘.=... → nesting delta (row0 - row1 column-wise)
     assert_apl(
         "-⌿'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'",
         &[
-            0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-            -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -1.0, -1.0,
+            0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -1.0, -1.0,
         ],
         "wiki ex23: bracket nesting delta",
     );
@@ -650,25 +716,27 @@ fn aplwiki_simple_examples() {
     assert_apl(
         "+\\-⌿'()'∘.='plus(square(a),plus(square(b),times(2,plus(a,b)))'",
         &[
-            0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0,
-            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
-            3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0,
-            3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 2.0, 1.0,
+            0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 2.0, 1.0,
         ],
         "wiki ex24: bracket nesting depth",
     );
 
     // Ex 25: 'ABBA'⍳'ABC' → 1 2 5
-    assert_apl("'ABBA'⍳'ABC'", &[1.0, 2.0, 5.0], "wiki ex25a: index of chars");
+    assert_apl(
+        "'ABBA'⍳'ABC'",
+        &[1.0, 2.0, 5.0],
+        "wiki ex25a: index of chars",
+    );
 
     // Ex 25 (part 2): '()'⍳'plus(square...' → bracket position mapping
     assert_apl(
         "'()'⍳'plus(square(a),plus(square(b),times(2,plus(a,b)))'",
         &[
-            3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0,
-            2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0,
-            1.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0,
-            3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 2.0, 2.0, 2.0,
+            3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 2.0, 3.0, 3.0, 3.0,
+            3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 2.0, 3.0, 3.0, 3.0, 3.0, 3.0,
+            3.0, 1.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 1.0, 3.0, 3.0, 3.0, 2.0, 2.0, 2.0,
         ],
         "wiki ex25b: bracket index mapping",
     );
@@ -677,10 +745,9 @@ fn aplwiki_simple_examples() {
     assert_apl(
         "1 ¯1 0['()'⍳'plus(square(a),plus(square(b),times(2,plus(a,b)))']",
         &[
-            0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-            -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-            1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-            0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -1.0, -1.0,
+            0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0,
+            0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+            0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, -1.0, -1.0,
         ],
         "wiki ex26: nesting delta via indexing",
     );
@@ -689,10 +756,9 @@ fn aplwiki_simple_examples() {
     assert_apl(
         "+\\1 ¯1 0['()'⍳'plus(square(a),plus(square(b),times(2,plus(a,b)))']",
         &[
-            0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0,
-            1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
-            3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0,
-            3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 2.0, 1.0,
+            0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0,
+            2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0, 4.0, 4.0, 4.0, 3.0, 2.0, 1.0,
         ],
         "wiki ex27: nesting depth via scan+indexing",
     );
@@ -947,7 +1013,11 @@ fn partitioned_enclose() {
     assert_eq!(format_val(&val), "(1 2) (3 4 5)", "partition: two groups");
 
     let val = eval_to_val("1 1 1 ⊂ 10 20 30", &mut env).unwrap();
-    assert_eq!(format_val(&val), "(10) (20) (30)", "partition: each element");
+    assert_eq!(
+        format_val(&val),
+        "(10) (20) (30)",
+        "partition: each element"
+    );
 
     let val = eval_to_val("1 0 0 0 0 ⊂ 1 2 3 4 5", &mut env).unwrap();
     assert_eq!(format_val(&val), "(1 2 3 4 5)", "partition: single group");
@@ -966,8 +1036,23 @@ fn modified_assignment() {
 #[test]
 fn indexed_assignment() {
     let mut env = Env::new();
-    assert_apl_env("x←1 2 3 4 5", &mut env, &[1.0, 2.0, 3.0, 4.0, 5.0], "assign vector");
-    assert_apl_env("x[3]←99", &mut env, &[1.0, 2.0, 99.0, 4.0, 5.0], "index assign single");
+    assert_apl_env(
+        "x←1 2 3 4 5",
+        &mut env,
+        &[1.0, 2.0, 3.0, 4.0, 5.0],
+        "assign vector",
+    );
+    assert_apl_env(
+        "x[3]←99",
+        &mut env,
+        &[1.0, 2.0, 99.0, 4.0, 5.0],
+        "index assign single",
+    );
     assert_apl_env("x", &mut env, &[1.0, 2.0, 99.0, 4.0, 5.0], "x modified");
-    assert_apl_env("x[1 5]←0", &mut env, &[0.0, 2.0, 99.0, 4.0, 0.0], "index assign multiple");
+    assert_apl_env(
+        "x[1 5]←0",
+        &mut env,
+        &[0.0, 2.0, 99.0, 4.0, 0.0],
+        "index assign multiple",
+    );
 }

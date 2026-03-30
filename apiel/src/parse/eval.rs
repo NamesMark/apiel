@@ -697,9 +697,17 @@ pub fn eval(
             env.vars.insert(name, val.clone());
             Ok(val)
         }
-        Expr::ModifiedAssign { span, name, operator, rhs } => {
+        Expr::ModifiedAssign {
+            span,
+            name,
+            operator,
+            rhs,
+        } => {
             debug!("Modified Assign: {name}");
-            let current = env.vars.get(&name).cloned()
+            let current = env
+                .vars
+                .get(&name)
+                .cloned()
                 .ok_or((span, "Undefined variable for modified assignment"))?;
             let rhs_eval = eval(lexer, *rhs, env)?;
             let op_fn = get_operator_fn(operator);
@@ -709,16 +717,29 @@ pub fn eval(
             env.vars.insert(name, result.clone());
             Ok(result)
         }
-        Expr::IndexedAssign { span, name, indices, rhs } => {
+        Expr::IndexedAssign {
+            span,
+            name,
+            indices,
+            rhs,
+        } => {
             debug!("Indexed Assign: {name}");
-            let mut current = env.vars.get(&name).cloned()
+            let mut current = env
+                .vars
+                .get(&name)
+                .cloned()
                 .ok_or((span, "Undefined variable for indexed assignment"))?;
             let idx_val = eval(lexer, *indices, env)?;
             let rhs_val = eval(lexer, *rhs, env)?;
 
-            let idxs: Vec<usize> = idx_val.data.iter()
+            let idxs: Vec<usize> = idx_val
+                .data
+                .iter()
                 .map(|s| {
-                    let i: usize = s.clone().try_into().map_err(|_| (span, "Index must be integer"))?;
+                    let i: usize = s
+                        .clone()
+                        .try_into()
+                        .map_err(|_| (span, "Index must be integer"))?;
                     if i < 1 || i > current.data.len() {
                         return Err((span, "Index out of bounds"));
                     }
@@ -1036,9 +1057,14 @@ pub fn eval(
             let rhs_eval = eval(lexer, *rhs, env)?;
 
             // Parse permutation vector (1-based to 0-based)
-            let perm: Vec<usize> = lhs_eval.data.iter()
+            let perm: Vec<usize> = lhs_eval
+                .data
+                .iter()
                 .map(|s| {
-                    let v: usize = s.clone().try_into().map_err(|_| (span, "Transpose perm must be integers"))?;
+                    let v: usize = s
+                        .clone()
+                        .try_into()
+                        .map_err(|_| (span, "Transpose perm must be integers"))?;
                     if v < 1 || v > rhs_eval.shape.len() {
                         return Err((span, "Transpose permutation out of range"));
                     }
@@ -1091,7 +1117,11 @@ pub fn eval(
                 }
 
                 // Convert new multi-dimensional index to flat
-                let new_flat: usize = new_idx.iter().zip(new_strides.iter()).map(|(&i, &s)| i * s).sum();
+                let new_flat: usize = new_idx
+                    .iter()
+                    .zip(new_strides.iter())
+                    .map(|(&i, &s)| i * s)
+                    .sum();
 
                 new_data[new_flat] = rhs_eval.data[old_flat].clone();
             }
@@ -1294,8 +1324,8 @@ pub fn eval(
                     for row in 1..first_dim {
                         let prev = data[(row - 1) * stride + col].clone();
                         let curr = data[row * stride + col].clone();
-                        data[row * stride + col] = op_fn(&prev, &curr)
-                            .ok_or((span, "Arithmetic error in ScanFirst"))?;
+                        data[row * stride + col] =
+                            op_fn(&prev, &curr).ok_or((span, "Arithmetic error in ScanFirst"))?;
                     }
                 }
                 Ok(Val::new(term_eval.shape.clone(), data))
@@ -1315,7 +1345,11 @@ pub fn eval(
                 .collect();
             Ok(Val::new(lhs_eval.shape.clone(), data))
         }
-        Expr::IndexRead { span, array, indices } => {
+        Expr::IndexRead {
+            span,
+            array,
+            indices,
+        } => {
             debug!("Index Read");
             let arr = eval(lexer, *array, env)?;
             let idx_val = eval(lexer, *indices, env)?;
@@ -1323,7 +1357,10 @@ pub fn eval(
                 .data
                 .iter()
                 .map(|s| {
-                    let i: usize = s.clone().try_into().map_err(|_| (span, "Index must be integer"))?;
+                    let i: usize = s
+                        .clone()
+                        .try_into()
+                        .map_err(|_| (span, "Index must be integer"))?;
                     if i < 1 || i > arr.data.len() {
                         return Err((span, "Index out of bounds"));
                     }
@@ -1336,6 +1373,96 @@ pub fn eval(
             } else {
                 Ok(Val::vector(data))
             }
+        }
+        Expr::DfnReduce { span, body, term } => {
+            debug!("Dfn Reduce");
+            let term_eval = eval(lexer, *term, env)?;
+            if term_eval.data.len() < 2 {
+                return Ok(term_eval);
+            }
+            let body_rc = Rc::new(*body);
+            // Right fold: f/ a b c = a f (b f c)
+            let mut acc = Val::scalar(term_eval.data.last().unwrap().clone());
+            for i in (0..term_eval.data.len() - 1).rev() {
+                let left = match &term_eval.data[i] {
+                    Scalar::Nested(v) => (**v).clone(),
+                    s => Val::scalar(s.clone()),
+                };
+                let stored = StoredDfn {
+                    body: Rc::clone(&body_rc),
+                    source: lexer.span_str(span).to_string(),
+                };
+                let mut dfn_env = env.clone();
+                dfn_env.vars.insert("⍺".to_string(), left);
+                dfn_env.vars.insert("⍵".to_string(), acc);
+                dfn_env.fns.insert("∇".to_string(), stored);
+                acc = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
+            }
+            Ok(acc)
+        }
+        Expr::DfnReduceFirst { span, body, term } => {
+            debug!("Dfn Reduce First");
+            let term_eval = eval(lexer, *term, env)?;
+            // For vectors, same as DfnReduce
+            // For matrices, reduce along first axis (column-wise)
+            if term_eval.shape.len() <= 1 {
+                let body_rc = Rc::new(*body);
+                if term_eval.data.len() < 2 {
+                    return Ok(term_eval);
+                }
+                let mut acc = Val::scalar(term_eval.data.last().unwrap().clone());
+                for i in (0..term_eval.data.len() - 1).rev() {
+                    let left = match &term_eval.data[i] {
+                        Scalar::Nested(v) => (**v).clone(),
+                        s => Val::scalar(s.clone()),
+                    };
+                    let stored = StoredDfn {
+                        body: Rc::clone(&body_rc),
+                        source: lexer.span_str(span).to_string(),
+                    };
+                    let mut dfn_env = env.clone();
+                    dfn_env.vars.insert("⍺".to_string(), left);
+                    dfn_env.vars.insert("⍵".to_string(), acc);
+                    dfn_env.fns.insert("∇".to_string(), stored);
+                    acc = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
+                }
+                Ok(acc)
+            } else {
+                // Higher-rank: reduce along first axis
+                let body_rc = Rc::new(*body);
+                let first_dim = term_eval.shape[0];
+                let stride: usize = term_eval.data.len() / first_dim;
+                let cell_shape = term_eval.shape[1..].to_vec();
+                // Start with last row
+                let mut acc_data = term_eval.data[(first_dim - 1) * stride..].to_vec();
+                for row in (0..first_dim - 1).rev() {
+                    let row_data = &term_eval.data[row * stride..(row + 1) * stride];
+                    let left = Val::new(cell_shape.clone(), row_data.to_vec());
+                    let right = Val::new(cell_shape.clone(), acc_data);
+                    let stored = StoredDfn {
+                        body: Rc::clone(&body_rc),
+                        source: lexer.span_str(span).to_string(),
+                    };
+                    let mut dfn_env = env.clone();
+                    dfn_env.vars.insert("⍺".to_string(), left);
+                    dfn_env.vars.insert("⍵".to_string(), right);
+                    dfn_env.fns.insert("∇".to_string(), stored);
+                    let result = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
+                    acc_data = result.data;
+                }
+                Ok(Val::new(cell_shape, acc_data))
+            }
+        }
+        Expr::StringArray { span: _, elements } => {
+            debug!("String Array");
+            let data: Vec<Scalar> = elements
+                .into_iter()
+                .map(|e| {
+                    let val = eval(lexer, e, env)?;
+                    Ok(Scalar::Nested(Box::new(val)))
+                })
+                .collect::<Result<Vec<_>, (Span, &'static str)>>()?;
+            Ok(Val::vector(data))
         }
         Expr::Variable { span, name } => {
             debug!("Variable: {name}");
@@ -1367,10 +1494,17 @@ pub fn eval(
             dfn_env.fns.insert("∇".to_string(), stored);
             eval(lexer, (*body_rc).clone(), &mut dfn_env)
         }
-        Expr::RankOp { span, body, rank, arg } => {
+        Expr::RankOp {
+            span,
+            body,
+            rank,
+            arg,
+        } => {
             debug!("Rank Operator");
             let rank_val = eval(lexer, *rank, env)?;
-            let k: usize = rank_val.data[0].clone().try_into()
+            let k: usize = rank_val.data[0]
+                .clone()
+                .try_into()
                 .map_err(|_| (span, "Rank must be a non-negative integer"))?;
             let arg_val = eval(lexer, *arg, env)?;
             let n = arg_val.shape.len();
@@ -1414,16 +1548,26 @@ pub fn eval(
             final_shape.extend_from_slice(&rcs);
             Ok(Val::new(final_shape, results))
         }
-        Expr::AtOp { span, body, indices, arg } => {
+        Expr::AtOp {
+            span,
+            body,
+            indices,
+            arg,
+        } => {
             debug!("At Operator");
             let idx_val = eval(lexer, *indices, env)?;
             let mut arg_val = eval(lexer, *arg, env)?;
             let body_rc = Rc::new(*body);
 
             // Convert 1-based indices to 0-based
-            let idxs: Vec<usize> = idx_val.data.iter()
+            let idxs: Vec<usize> = idx_val
+                .data
+                .iter()
                 .map(|s| {
-                    let i: usize = s.clone().try_into().map_err(|_| (span, "At index must be integer"))?;
+                    let i: usize = s
+                        .clone()
+                        .try_into()
+                        .map_err(|_| (span, "At index must be integer"))?;
                     if i < 1 || i > arg_val.data.len() {
                         return Err((span, "At index out of bounds"));
                     }
@@ -1473,8 +1617,12 @@ pub fn eval(
                     source: lexer.span_str(span).to_string(),
                 };
                 let mut dfn_env = env.clone();
-                dfn_env.vars.insert("⍺".to_string(), Val::scalar(key.clone()));
-                dfn_env.vars.insert("⍵".to_string(), Val::vector(indices.clone()));
+                dfn_env
+                    .vars
+                    .insert("⍺".to_string(), Val::scalar(key.clone()));
+                dfn_env
+                    .vars
+                    .insert("⍵".to_string(), Val::vector(indices.clone()));
                 dfn_env.fns.insert("∇".to_string(), stored);
                 let result = eval(lexer, (*body_rc).clone(), &mut dfn_env)?;
                 results.extend(result.data);
@@ -1482,10 +1630,17 @@ pub fn eval(
 
             Ok(Val::vector(results))
         }
-        Expr::PowerOp { span, body, count, arg } => {
+        Expr::PowerOp {
+            span,
+            body,
+            count,
+            arg,
+        } => {
             debug!("Power Operator (dfn)");
             let count_val = eval(lexer, *count, env)?;
-            let n: usize = count_val.data[0].clone().try_into()
+            let n: usize = count_val.data[0]
+                .clone()
+                .try_into()
                 .map_err(|_| (span, "Power operator count must be a non-negative integer"))?;
             let mut current = eval(lexer, *arg, env)?;
             let body_rc = Rc::new(*body);
@@ -1533,7 +1688,13 @@ pub fn eval(
             f_env.vars.insert("⍵".to_string(), g_result);
             eval(lexer, *f, &mut f_env)
         }
-        Expr::ComposeDyadicDfn { span: _, lhs, f, g, arg } => {
+        Expr::ComposeDyadicDfn {
+            span: _,
+            lhs,
+            f,
+            g,
+            arg,
+        } => {
             debug!("Compose (dyadic)");
             let lhs_val = eval(lexer, *lhs, env)?;
             let arg_val = eval(lexer, *arg, env)?;
@@ -1559,7 +1720,13 @@ pub fn eval(
             f_env.vars.insert("⍵".to_string(), g_result);
             eval(lexer, *f, &mut f_env)
         }
-        Expr::OverDyadicDfn { span: _, lhs, f, g, arg } => {
+        Expr::OverDyadicDfn {
+            span: _,
+            lhs,
+            f,
+            g,
+            arg,
+        } => {
             debug!("Over (dyadic)");
             let lhs_val = eval(lexer, *lhs, env)?;
             let arg_val = eval(lexer, *arg, env)?;
@@ -1717,7 +1884,10 @@ pub fn eval(
             let rhs_eval = eval(lexer, *rhs, env)?;
 
             if lhs_eval.data.len() != rhs_eval.data.len() {
-                return Err((span, "Partitioned enclose: left and right must be same length"));
+                return Err((
+                    span,
+                    "Partitioned enclose: left and right must be same length",
+                ));
             }
 
             let mut partitions: Vec<Vec<Scalar>> = Vec::new();
@@ -2207,7 +2377,11 @@ pub fn eval(
         Expr::Tally { span: _, arg } => {
             debug!("Monadic Tally");
             let arg_eval = eval(lexer, *arg, env)?;
-            let tally = if arg_eval.shape.is_empty() { 1 } else { arg_eval.shape[0] };
+            let tally = if arg_eval.shape.is_empty() {
+                1
+            } else {
+                arg_eval.shape[0]
+            };
             Ok(Val::scalar(Scalar::Integer(tally as i64)))
         }
         Expr::Depth { span: _, arg } => {
@@ -2219,13 +2393,25 @@ pub fn eval(
             debug!("Dyadic Match");
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
-            Ok(Val::scalar(Scalar::Integer(if lhs_eval.matches_val(&rhs_eval) { 1 } else { 0 })))
+            Ok(Val::scalar(Scalar::Integer(
+                if lhs_eval.matches_val(&rhs_eval) {
+                    1
+                } else {
+                    0
+                },
+            )))
         }
         Expr::NotMatch { span: _, lhs, rhs } => {
             debug!("Dyadic Not Match");
             let lhs_eval = eval(lexer, *lhs, env)?;
             let rhs_eval = eval(lexer, *rhs, env)?;
-            Ok(Val::scalar(Scalar::Integer(if lhs_eval.matches_val(&rhs_eval) { 0 } else { 1 })))
+            Ok(Val::scalar(Scalar::Integer(
+                if lhs_eval.matches_val(&rhs_eval) {
+                    0
+                } else {
+                    1
+                },
+            )))
         }
         Expr::Find { span: _, lhs, rhs } => {
             debug!("Dyadic Find");
@@ -2238,7 +2424,11 @@ pub fn eval(
             let mut result = vec![Scalar::Integer(0); dlen];
             if plen > 0 && plen <= dlen {
                 for i in 0..=(dlen - plen) {
-                    if data[i..i + plen].iter().zip(pattern.iter()).all(|(a, b)| a == b) {
+                    if data[i..i + plen]
+                        .iter()
+                        .zip(pattern.iter())
+                        .all(|(a, b)| a == b)
+                    {
                         result[i] = Scalar::Integer(1);
                     }
                 }
@@ -2272,7 +2462,11 @@ pub fn eval(
                 op_fn(a, b).ok_or_eyre("Commute operation failed")
             })
         }
-        Expr::Selfie { span, operator, arg } => {
+        Expr::Selfie {
+            span,
+            operator,
+            arg,
+        } => {
             debug!("Monadic Selfie");
             let arg_eval = eval(lexer, *arg, env)?;
             let op_fn = get_operator_fn(operator);
