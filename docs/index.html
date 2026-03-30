@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>apiel - APL in Rust</title>
+        <style>
+            :root {
+                --bg: #1a1b26;
+                --surface: #24283b;
+                --border: #3b4261;
+                --text: #c0caf5;
+                --dim: #565f89;
+                --accent: #7aa2f7;
+                --green: #9ece6a;
+                --red: #f7768e;
+                --mono:
+                    "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+            }
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            body {
+                background: var(--bg);
+                color: var(--text);
+                font-family: var(--mono);
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+            }
+            header {
+                padding: 1.5rem 2rem 1rem;
+                border-bottom: 1px solid var(--border);
+            }
+            header h1 {
+                font-size: 1.4rem;
+                font-weight: 600;
+                color: var(--accent);
+            }
+            header h1 span {
+                color: var(--dim);
+                font-weight: 400;
+            }
+            header p {
+                color: var(--dim);
+                font-size: 0.8rem;
+                margin-top: 0.3rem;
+            }
+            #output {
+                flex: 1;
+                padding: 1rem 2rem;
+                overflow-y: auto;
+                font-size: 0.95rem;
+                line-height: 1.6;
+            }
+            .line {
+                white-space: pre-wrap;
+                word-break: break-all;
+            }
+            .input-line {
+                color: var(--dim);
+            }
+            .input-line .expr {
+                color: var(--text);
+            }
+            .result-line {
+                color: var(--green);
+            }
+            .error-line {
+                color: var(--red);
+            }
+            #input-area {
+                display: flex;
+                align-items: center;
+                padding: 0.8rem 2rem;
+                border-top: 1px solid var(--border);
+                background: var(--surface);
+            }
+            #prompt {
+                color: var(--accent);
+                font-size: 0.95rem;
+                margin-right: 0.5rem;
+                user-select: none;
+            }
+            #input {
+                flex: 1;
+                background: transparent;
+                border: none;
+                outline: none;
+                color: var(--text);
+                font-family: var(--mono);
+                font-size: 0.95rem;
+                caret-color: var(--accent);
+            }
+            #input::placeholder {
+                color: var(--border);
+            }
+            .help {
+                padding: 0.5rem 2rem;
+                color: var(--dim);
+                font-size: 0.75rem;
+                border-top: 1px solid var(--border);
+            }
+            .help kbd {
+                background: var(--surface);
+                padding: 0.1rem 0.4rem;
+                border-radius: 3px;
+                border: 1px solid var(--border);
+            }
+        </style>
+    </head>
+    <body>
+        <header>
+            <h1>apiel <span>/ toy APL in Rust</span></h1>
+            <!--<p>Play with a programming language in Rust.</p>-->
+        </header>
+        <div id="output"></div>
+        <div id="input-area">
+            <span id="prompt">&gt;&gt;&gt;</span>
+            <input
+                id="input"
+                type="text"
+                placeholder="try: +/ ⍳ 10"
+                autofocus
+                autocomplete="off"
+                spellcheck="false"
+            />
+        </div>
+        <div class="help">
+            <kbd>Enter</kbd> evaluate <kbd>Up</kbd>/<kbd>Down</kbd> history
+            <kbd>Ctrl+L</kbd> clear &mdash; APL chars:
+            <span id="apl-keys" style="cursor: pointer; color: var(--accent)"
+                >click to show keyboard</span
+            >
+        </div>
+
+        <div
+            id="apl-keyboard"
+            style="
+                display: none;
+                padding: 0.8rem 2rem;
+                border-top: 1px solid var(--border);
+                background: var(--surface);
+            "
+        >
+            <div
+                id="apl-buttons"
+                style="display: flex; flex-wrap: wrap; gap: 4px"
+            ></div>
+        </div>
+
+        <script type="module">
+            import init, { eval_apl, reset_env } from "./pkg/apiel_wasm.js";
+
+            const APL_CHARS =
+                "+-×÷*⍟○!?|⌈⌊⍳⍸⍴,⌽⍉↑↓⍋⍒⌹⊂⊃⊆⌷∪∩~⊥⊤=≠<>≤≥∧∨⍲⍱/\\∘.¨←⍵⍺∇⋄:¯'";
+
+            try {
+                await init();
+            } catch (e) {
+                document.getElementById("output").textContent =
+                    "Failed to load WASM: " +
+                    e.message +
+                    "\n\nIf on GitHub Pages, make sure docs/pkg/ is committed and pushed.";
+                throw e;
+            }
+
+            const output = document.getElementById("output");
+            const input = document.getElementById("input");
+            const history = [];
+            let histIdx = -1;
+
+            function addLine(cls, text) {
+                const div = document.createElement("div");
+                div.className = "line " + cls;
+                div.textContent = text;
+                output.appendChild(div);
+                output.scrollTop = output.scrollHeight;
+            }
+
+            function addInputLine(expr) {
+                const div = document.createElement("div");
+                div.className = "line input-line";
+                div.innerHTML =
+                    '<span style="color:var(--accent)">>>> </span><span class="expr">' +
+                    expr.replace(/&/g, "&amp;").replace(/</g, "&lt;") +
+                    "</span>";
+                output.appendChild(div);
+            }
+
+            // Welcome
+            addLine("result-line", "  Welcome to apiel — APL in Rust (WASM)");
+            addLine(
+                "",
+                "  Try: +/ ⍳ 10    ⍴ 2 3 ⍴ ⍳ 6    {⍵≤1: ⍵ ⋄ ⍵×∇ ⍵-1} 5",
+            );
+            addLine("", "");
+
+            input.addEventListener("keydown", (e) => {
+                if (e.key === "Enter") {
+                    const expr = input.value;
+                    if (!expr.trim()) return;
+                    history.unshift(expr);
+                    histIdx = -1;
+                    addInputLine(expr);
+                    const result = eval_apl(expr);
+                    if (result.startsWith("ERROR:")) {
+                        addLine("error-line", result);
+                    } else if (result) {
+                        addLine("result-line", result);
+                    }
+                    input.value = "";
+                } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    if (histIdx < history.length - 1) {
+                        histIdx++;
+                        input.value = history[histIdx];
+                    }
+                } else if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    if (histIdx > 0) {
+                        histIdx--;
+                        input.value = history[histIdx];
+                    } else {
+                        histIdx = -1;
+                        input.value = "";
+                    }
+                } else if (e.key === "l" && e.ctrlKey) {
+                    e.preventDefault();
+                    output.innerHTML = "";
+                    reset_env();
+                }
+            });
+
+            // APL keyboard
+            const kbToggle = document.getElementById("apl-keys");
+            const kbDiv = document.getElementById("apl-keyboard");
+            const kbButtons = document.getElementById("apl-buttons");
+
+            kbToggle.addEventListener("click", () => {
+                kbDiv.style.display =
+                    kbDiv.style.display === "none" ? "block" : "none";
+            });
+
+            for (const ch of APL_CHARS) {
+                const btn = document.createElement("button");
+                btn.textContent = ch;
+                btn.style.cssText =
+                    "background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-family:var(--mono);font-size:1rem;cursor:pointer;";
+                btn.addEventListener("click", () => {
+                    const pos = input.selectionStart;
+                    input.value =
+                        input.value.slice(0, pos) + ch + input.value.slice(pos);
+                    input.focus();
+                    input.selectionStart = input.selectionEnd = pos + ch.length;
+                });
+                kbButtons.appendChild(btn);
+            }
+        </script>
+    </body>
+</html>

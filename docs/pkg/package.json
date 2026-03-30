@@ -1,0 +1,15 @@
+{
+  "name": "apiel-wasm",
+  "type": "module",
+  "version": "0.2.0",
+  "files": [
+    "apiel_wasm_bg.wasm",
+    "apiel_wasm.js",
+    "apiel_wasm.d.ts"
+  ],
+  "main": "apiel_wasm.js",
+  "types": "apiel_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
