@@ -1,6 +1,6 @@
 [package]
 name = "apiel"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Mark Firman <markfirmanwork@gmail.com>"]
 edition = "2024"
 description = "A subset of the APL programming language implemented in Rust. Exports a macro for evaluating APL expressions from Rust code, providing a way to solve some problems in a very concise manner."
