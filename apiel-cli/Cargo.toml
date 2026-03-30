@@ -1,6 +1,6 @@
 [package]
 name = "apiel-cli"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Mark Firman <markfirmanwork@gmail.com>"]
 edition = "2024"
 description = "Interactive REPL for apiel, a subset of the APL programming language implemented in Rust."
@@ -15,7 +15,7 @@ doc = false
 name = "apiel-cli"
 
 [dependencies]
-apiel = { version = "0.2.0", path = "../apiel" }
+apiel = { version = "0.3.0", path = "../apiel" }
 tracing-subscriber.workspace = true
 
 [dev-dependencies]
