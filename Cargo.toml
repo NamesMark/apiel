@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "apiel",
     "apiel-cli",
+    "apiel-wasm",
 ]
 
 [workspace.dependencies]
