@@ -33,8 +33,28 @@ struct Tok<'a> {
 fn is_operator_tok(t: &str) -> bool {
     matches!(
         t,
-        "+" | "-" | "×" | "÷" | "*" | "⍟" | "○" | "!" | "?" | "|" | "⌈" | "⌊"
-            | "=" | "≠" | "<" | ">" | "≤" | "≥" | "∧" | "∨" | "⍲" | "⍱" | ","
+        "+" | "-"
+            | "×"
+            | "÷"
+            | "*"
+            | "⍟"
+            | "○"
+            | "!"
+            | "?"
+            | "|"
+            | "⌈"
+            | "⌊"
+            | "="
+            | "≠"
+            | "<"
+            | ">"
+            | "≤"
+            | "≥"
+            | "∧"
+            | "∨"
+            | "⍲"
+            | "⍱"
+            | ","
     )
 }
 
@@ -42,8 +62,27 @@ fn is_operator_tok(t: &str) -> bool {
 fn is_monadic_fn_tok(t: &str) -> bool {
     matches!(
         t,
-        "⍴" | "⌽" | "⍳" | "⍋" | "⍒" | "≢" | "≡" | "∪" | "⊃" | "⊂" | "⍉" | "~" | "⊣"
-            | "⊢" | "⌹" | "⍸" | "⍷" | "↑" | "↓" | "∊" | "⊆" | "⌷"
+        "⍴" | "⌽"
+            | "⍳"
+            | "⍋"
+            | "⍒"
+            | "≢"
+            | "≡"
+            | "∪"
+            | "⊃"
+            | "⊂"
+            | "⍉"
+            | "~"
+            | "⊣"
+            | "⊢"
+            | "⌹"
+            | "⍸"
+            | "⍷"
+            | "↑"
+            | "↓"
+            | "∊"
+            | "⊆"
+            | "⌷"
     )
 }
 
@@ -126,7 +165,10 @@ fn try_parse_train(tokens: &[Tok]) -> Option<Vec<TrainFn>> {
     }
 
     // Reject if nested parens/braces are present
-    if tokens.iter().any(|t| matches!(t.text, "(" | ")" | "{" | "}")) {
+    if tokens
+        .iter()
+        .any(|t| matches!(t.text, "(" | ")" | "{" | "}"))
+    {
         return None;
     }
 
@@ -145,9 +187,7 @@ fn try_parse_train(tokens: &[Tok]) -> Option<Vec<TrainFn>> {
 
         // Operator possibly followed by / or \ or ⌿ or ⍀ (reduce/scan variants)
         if is_operator_tok(t) {
-            if i + 1 < tokens.len()
-                && matches!(tokens[i + 1].text, "/" | "\\" | "⌿" | "⍀")
-            {
+            if i + 1 < tokens.len() && matches!(tokens[i + 1].text, "/" | "\\" | "⌿" | "⍀") {
                 fns.push(TrainFn::Derived(format!("{}{}", t, tokens[i + 1].text)));
                 i += 2;
                 continue;

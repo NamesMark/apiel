@@ -175,6 +175,12 @@ Term -> Result<Expr, ()>:
     | '{' DfnBody '}' 'RANK' Factor Term {
         Ok(Expr::RankOp{ span: $span, body: Box::new($2?), rank: Box::new($5?), arg: Box::new($6?) })
       }
+    | '{' DfnBody '}' '/' Term {
+        Ok(Expr::DfnReduce{ span: $span, body: Box::new($2?), term: Box::new($5?) })
+      }
+    | '{' DfnBody '}' 'REDUCEFIRST' Term {
+        Ok(Expr::DfnReduceFirst{ span: $span, body: Box::new($2?), term: Box::new($5?) })
+      }
     | 'NAME' Factor {
         Ok(Expr::NamedMonadic{ span: $span, name: $1.map(|l| $lexer.span_str(l.span()).to_string()).unwrap_or_default(), rhs: Box::new($2?) })
       }
@@ -437,8 +443,27 @@ Factor -> Result<Expr, ()>:
     | 'ALPHA' {
         Ok(Expr::Alpha { span: $span })
     }
+    | StringArray { $1 }
     | 'STRING' {
         Ok(Expr::StringLiteral { span: $span })
+    }
+    ;
+
+    StringArray -> Result<Expr, ()>:
+    'STRING' 'STRING' {
+        Ok(Expr::StringArray { span: $span, elements: vec![
+            Expr::StringLiteral { span: $1.map(|l| l.span()).unwrap_or($span) },
+            Expr::StringLiteral { span: $2.map(|l| l.span()).unwrap_or($span) },
+        ]})
+    }
+    | StringArray 'STRING' {
+        match $1? {
+            Expr::StringArray { span: _, mut elements } => {
+                elements.push(Expr::StringLiteral { span: $2.map(|l| l.span()).unwrap_or($span) });
+                Ok(Expr::StringArray { span: $span, elements })
+            },
+            _ => Err(()),
+        }
     }
     ;
 
@@ -1066,6 +1091,20 @@ pub enum Expr {
         span: Span,
         array: Box<Expr>,
         indices: Box<Expr>,
+    },
+    DfnReduce {
+        span: Span,
+        body: Box<Expr>,
+        term: Box<Expr>,
+    },
+    DfnReduceFirst {
+        span: Span,
+        body: Box<Expr>,
+        term: Box<Expr>,
+    },
+    StringArray {
+        span: Span,
+        elements: Vec<Expr>,
     },
 
     // Values
