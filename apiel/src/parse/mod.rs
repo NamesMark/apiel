@@ -3,7 +3,7 @@ pub mod val;
 
 use cfgrammar::Span;
 use lrlex::{DefaultLexerTypes, lrlex_mod};
-use lrpar::{Lexeme, Lexer, NonStreamingLexer, lrpar_mod};
+use lrpar::{LexError, LexParseError, Lexeme, Lexer, NonStreamingLexer, lrpar_mod};
 
 lrlex_mod!("apiel.l");
 lrpar_mod!("apiel.y");
@@ -369,8 +369,12 @@ pub fn eval_to_val(line: &str, env: &mut Env) -> Result<Val, String> {
 
     let (res, errs) = apiel_y::parse(&lexer);
 
-    if !errs.is_empty() {
-        return Err(format!("Parse error: {:?}", errs));
+    if let Some(err) = errs.first() {
+        let start = match err {
+            LexParseError::LexError(lex_error) => lex_error.span().start(),
+            LexParseError::ParseError(parse_error) => parse_error.lexeme().span().start(),
+        };
+        return Err(format_parse_error(line, start));
     }
 
     if let Some(Ok(r)) = res {
@@ -387,6 +391,30 @@ pub fn eval_to_val(line: &str, env: &mut Env) -> Result<Val, String> {
     } else {
         Err("Failed to evaluate expression".to_string())
     }
+}
+
+const HINTS: &[(&str, &str)] = &[
+    ("<=", "did you mean `≤`?"),
+    (">=", "did you mean `≥`?"),
+    ("!=", "did you mean `≠`?"),
+    ("==", "APL compares with a single `=`"),
+    ("&", "did you mean `∧`?"),
+    ("%", "did you mean `÷` for divide or `|` for residue?"),
+    ("[", "APL lists need no brackets, write `1 2 3`"),
+];
+
+fn format_parse_error(line: &str, start: usize) -> String {
+    let column = line[..start].chars().count();
+    let caret = format!("{}^", " ".repeat(column));
+    let Some(found) = line[start..].chars().next() else {
+        return format!("Parse error: unexpected end of input\n{line}\n{caret}");
+    };
+    let mut message = format!("Parse error: unexpected '{found}'\n{line}\n{caret}");
+    let hint = HINTS.iter().find(|(pattern, _)| line.contains(pattern));
+    if let Some((_, hint)) = hint {
+        message.push_str(&format!("\nhint: {hint}"));
+    }
+    message
 }
 
 pub fn format_val(val: &Val) -> String {

@@ -8,7 +8,10 @@ fn main() {
     CTLexerBuilder::new()
         .rust_edition(lrlex::RustEdition::Rust2021)
         .lrpar_config(|ctp| {
+            // Error recovery times itself with std::time::Instant, which panics on
+            // wasm32-unknown-unknown.
             ctp.yacckind(YaccKind::Grmtools)
+                .recoverer(lrpar::RecoveryKind::None)
                 .rust_edition(lrpar::RustEdition::Rust2021)
                 .error_on_conflicts(false)
                 .grammar_in_src_dir("apiel.y")

@@ -194,8 +194,9 @@
             addLine("result-line", "  Welcome to apiel — APL in Rust (WASM)");
             addLine(
                 "",
-                "  Try: +/ ⍳ 10    ⍴ 2 3 ⍴ ⍳ 6    {⍵≤1: ⍵ ⋄ ⍵×∇ ⍵-1} 5",
+                "  Try: +/ ⍳ 10    2×1 2 3    ⍴ 2 3 ⍴ ⍳ 6    {⍵≤1: ⍵ ⋄ ⍵×∇ ⍵-1} 5",
             );
+            addLine("", "  Note: * is power, × is multiply");
             addLine("", "");
 
             input.addEventListener("keydown", (e) => {
@@ -205,7 +206,12 @@
                     history.unshift(expr);
                     histIdx = -1;
                     addInputLine(expr);
-                    const result = eval_apl(expr);
+                    let result;
+                    try {
+                        result = eval_apl(expr);
+                    } catch (err) {
+                        result = "ERROR: " + err.message;
+                    }
                     if (result.startsWith("ERROR:")) {
                         addLine("error-line", result);
                     } else if (result) {
